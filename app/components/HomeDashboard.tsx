@@ -3,11 +3,15 @@
 import React from "react";
 import Image from "next/image";
 import { useApp } from "../context";
-import { FileText, AlertTriangle, UserPlus, BarChart3, Lock, ShieldCheck, ChevronRight } from "lucide-react";
+import { FileText, AlertTriangle, UserPlus, BarChart3, Lock, ShieldCheck, ChevronRight, UserCog } from "lucide-react";
 
 export const HomeDashboard: React.FC = () => {
-  const { currentUser, setNavigation, policies, signatures } = useApp();
+  const { currentUser, setNavigation, policies, signatures, switchRole } = useApp();
   const isManager = currentUser.role === "manager";
+
+  const handleRoleToggle = () => {
+    switchRole(isManager ? "employee" : "manager");
+  };
 
   // Calculate pending policies for the current user
   const userSignatures = signatures.filter((s) => s.employeeId === currentUser.id);
@@ -35,6 +39,30 @@ export const HomeDashboard: React.FC = () => {
         <p className="text-[11px] font-semibold text-zinc-500 tracking-wider uppercase mt-0.5">
           Workforce & Compliance Portal
         </p>
+      </div>
+
+      {/* Interactive Role Switcher Banner (Helpful for prototyping review) */}
+      <div className="bg-red-50/70 border border-red-100 rounded-2xl p-4 mb-6 flex items-center justify-between shadow-2xs">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-primary text-white rounded-xl">
+            <UserCog size={18} />
+          </div>
+          <div>
+            <p className="text-[11px] font-black uppercase text-primary tracking-wider">Active Role: {currentUser.role}</p>
+            <p className="text-[10px] text-zinc-500 font-semibold mt-0.5">
+              {isManager 
+                ? "Full access to warnings, onboarding, and compliance metrics." 
+                : "Limited access. Switch role to test manager forms."}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleRoleToggle}
+          className="bg-white hover:bg-zinc-50 border border-zinc-250 text-zinc-800 text-[10px] font-black uppercase tracking-wider px-3.5 py-2.5 rounded-xl transition-all cursor-pointer shadow-3xs hover:scale-[1.02] active:scale-[0.98]"
+        >
+          Toggle to {isManager ? "Mover" : "Manager"}
+        </button>
       </div>
 
       {/* User Info Greeting Card */}
