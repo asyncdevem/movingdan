@@ -22,7 +22,7 @@ export const PolicyDetail: React.FC = () => {
 
   const policy = policies.find((p) => p.id === selectedPolicyId);
   const userSignature = signatures.find(
-    (s) => s.policyId === selectedPolicyId && s.employeeId === currentUser.id
+    (s) => s.policyId === selectedPolicyId && s.employeeId === currentUser?.id
   );
 
   const isSigned = !!userSignature;
@@ -246,7 +246,7 @@ export const PolicyDetail: React.FC = () => {
                   </div>
                   <p className="text-xs font-extrabold text-zinc-800">Signed Document Acknowledged</p>
                   <p className="text-[10px] text-zinc-500 mt-1">
-                    Signed by <span className="font-bold text-zinc-700">{currentUser.name}</span>
+                    Signed by <span className="font-bold text-zinc-700">{currentUser?.name}</span>
                   </p>
                   <p className="text-[10px] text-zinc-400 mt-0.5 flex items-center gap-1">
                     <Calendar size={10} />
@@ -265,7 +265,7 @@ export const PolicyDetail: React.FC = () => {
                     </div>
                   ) : (
                     <div className="mt-4 bg-white border border-emerald-100 rounded-lg px-6 py-4 max-w-[280px] italic text-[11px] text-zinc-400 font-serif font-bold tracking-widest border-dashed">
-                      {currentUser.name}
+                      {currentUser?.name}
                     </div>
                   )}
                 </div>

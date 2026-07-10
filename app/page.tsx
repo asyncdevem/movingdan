@@ -10,6 +10,8 @@ import { WarningForm } from "./components/WarningForm";
 import { AddEmployeeForm } from "./components/AddEmployeeForm";
 import { ReportsDashboard } from "./components/ReportsDashboard";
 import { SettingsView } from "./components/SettingsView";
+import { AuthScreen } from "./components/AuthScreen";
+import { AddPolicyForm } from "./components/AddPolicyForm";
 import { 
   Home as HomeIcon, 
   Users as UsersIcon, 
@@ -23,16 +25,17 @@ import {
   CheckCircle,
   FileCheck,
   ChevronRight,
-  UserCog
+  UserCog,
+  LogOut
 } from "lucide-react";
 
 // ==========================================
 // 1. Employee Directory Tab (Responsive grid)
 // ==========================================
 const EmployeeDirectory: React.FC = () => {
-  const { users, currentUser, signatures, policies, setNavigation } = useApp();
+  const { users, currentUser, signatures, policies, setNavigation, setSelectedEmployeeId } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
-  const isManager = currentUser.role === "manager";
+  const isManager = currentUser?.role === "manager";
 
   const directoryUsers = users.filter((u) => u.role === "employee");
 
@@ -52,7 +55,7 @@ const EmployeeDirectory: React.FC = () => {
         {isManager && (
           <button
             onClick={() => setNavigation("add-employee")}
-            className="px-3 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl transition-all flex items-center gap-1.5 text-xs font-black uppercase tracking-wider shadow-xs hover:scale-[1.02] active:scale-[0.98]"
+            className="px-3 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl transition-all flex items-center gap-1.5 text-xs font-black uppercase tracking-wider shadow-xs hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
             <UserPlus size={14} />
             Onboard Mover
@@ -105,13 +108,13 @@ const EmployeeDirectory: React.FC = () => {
                         <div className="flex-1 h-2 bg-zinc-100 rounded-full overflow-hidden">
                           <div 
                             className={`h-full rounded-full transition-all ${
-                              complianceRate === 100 ? "bg-emerald-500" : complianceRate > 50 ? "bg-amber-500" : "bg-primary"
+                              complianceRate === 100 ? "bg-emerald-500" : complianceRate > 50 ? "bg-zinc-800" : "bg-primary"
                             }`}
                             style={{ width: `${complianceRate}%` }}
                           />
                         </div>
                         <span className={`text-[10px] font-black shrink-0 ${
-                          complianceRate === 100 ? "text-emerald-600" : complianceRate > 50 ? "text-amber-600" : "text-primary"
+                          complianceRate === 100 ? "text-emerald-600" : complianceRate > 50 ? "text-zinc-800" : "text-primary"
                         }`}>
                           {signedCount}/{policies.length} Signed
                         </span>
@@ -119,15 +122,28 @@ const EmployeeDirectory: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="mt-6 pt-4 border-t border-zinc-100 flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-bold text-zinc-400">{user.email}</span>
-                    <a 
-                      href={`mailto:${user.email}`} 
-                      className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase text-zinc-700 hover:text-zinc-950 bg-zinc-100 hover:bg-zinc-200 py-1.5 px-3 rounded-lg transition-colors border border-zinc-200"
-                    >
-                      <Mail size={12} />
-                      Email
-                    </a>
+                  <div className="mt-6 pt-4 border-t border-zinc-150 flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold text-zinc-400 truncate max-w-[100px]">{user.email}</span>
+                    <div className="flex items-center gap-2">
+                      {isManager && (
+                        <button
+                          onClick={() => {
+                            setSelectedEmployeeId(user.id);
+                            setNavigation("warning-form");
+                          }}
+                          className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-primary hover:text-primary-hover bg-red-50 hover:bg-red-100 py-1.5 px-2.5 rounded-lg transition-colors border border-red-100 cursor-pointer shadow-3xs"
+                        >
+                          Warnings
+                        </button>
+                      )}
+                      <a 
+                        href={`mailto:${user.email}`} 
+                        className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase text-zinc-700 hover:text-zinc-950 bg-zinc-105 hover:bg-zinc-200 py-1.5 px-3 rounded-lg transition-colors border border-zinc-200"
+                      >
+                        <Mail size={12} />
+                        Email
+                      </a>
+                    </div>
                   </div>
                 </div>
               );
@@ -149,6 +165,8 @@ const EmployeeDirectory: React.FC = () => {
 // ==========================================
 const PersonalWarnings: React.FC = () => {
   const { currentUser, warnings } = useApp();
+  
+  if (!currentUser) return null;
   const myWarnings = warnings.filter((w) => w.employeeId === currentUser.id);
 
   return (
@@ -198,21 +216,31 @@ const PersonalWarnings: React.FC = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <h5 className="text-sm font-black text-zinc-900 uppercase tracking-tight">Warning Notice</h5>
+                      <div className="flex items-center gap-2">
+                        <h5 className="text-sm font-black text-zinc-900 uppercase tracking-tight">{warning.warningType || "Warning"}</h5>
+                        <span className="text-[9px] font-black text-zinc-800 bg-zinc-100 px-2 py-0.5 rounded-lg border border-zinc-150 font-mono tracking-tight">
+                          {warning.id}
+                        </span>
+                      </div>
                       <span className={`text-[8px] font-black uppercase px-2.5 py-1 rounded-full ${
                         warning.severity === "Final Warning" 
-                          ? "bg-red-100 text-red-700 border border-red-200" 
+                          ? "bg-red-105 text-red-700 border border-red-200" 
                           : "bg-zinc-900 text-white"
                       }`}>
                         {warning.severity}
                       </span>
                     </div>
-                    <p className="text-xs font-bold text-zinc-500 mt-1">{warning.category} • Issued {warning.date}</p>
-                    <p className="text-xs text-zinc-650 font-semibold leading-relaxed mt-3 bg-zinc-50 p-4 rounded-xl border border-zinc-150 italic text-zinc-700">
-                      &quot;{warning.details}&quot;
+                    <p className="text-xs font-bold text-zinc-500 mt-1">Issued {warning.date} • Impact: ${warning.cost}</p>
+                    <p className="text-xs text-zinc-650 leading-relaxed mt-3 bg-zinc-50 p-4 rounded-xl border border-zinc-150 italic text-zinc-700 font-semibold">
+                      &quot;{warning.incidentDetails || warning.details}&quot;
                     </p>
                     <div className="mt-3 flex items-center justify-between text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
                       <span>Issued by crew lead: {warning.issuedBy}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[8px] font-black ${
+                        warning.status === "Active" ? "bg-red-50 text-red-650" : "bg-emerald-50 text-emerald-650"
+                      }`}>
+                        Status: {warning.status}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -236,16 +264,17 @@ const PersonalWarnings: React.FC = () => {
 // 3. Main Page Shell
 // ==========================================
 export default function Home() {
-  const { currentScreen, activeTab, currentUser, setActiveTab, switchRole } = useApp();
+  const { currentScreen, activeTab, currentUser, setActiveTab, switchRole, logout, isLoading } = useApp();
 
   const handleRoleToggle = () => {
+    if (!currentUser) return;
     const nextRole = currentUser.role === "manager" ? "employee" : "manager";
     switchRole(nextRole);
   };
 
   // Determine whether to display navigation indicators
-  const isManager = currentUser.role === "manager";
-  const hideBottomBar = ["policy-detail", "warning-form", "add-employee"].includes(currentScreen);
+  const isManager = currentUser?.role === "manager";
+  const hideBottomBar = ["policy-detail", "warning-form", "add-employee", "add-policy"].includes(currentScreen);
 
   // Render drill-down screens first, if active
   const renderScreen = () => {
@@ -258,6 +287,8 @@ export default function Home() {
         return <WarningForm />;
       case "add-employee":
         return <AddEmployeeForm />;
+      case "add-policy":
+        return <AddPolicyForm />;
       case "report-view":
         return <ReportsDashboard />;
       default:
@@ -279,6 +310,23 @@ export default function Home() {
         return <HomeDashboard />;
     }
   };
+
+  // Loading indicator
+  if (isLoading) {
+    return (
+      <div className="h-screen w-screen bg-zinc-950 flex items-center justify-center text-white select-none">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-black uppercase tracking-wider text-zinc-400">Loading Portal...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Auth gate
+  if (!currentUser) {
+    return <AuthScreen />;
+  }
 
   return (
     <div className="flex h-screen w-screen bg-zinc-50 overflow-hidden">
@@ -313,7 +361,7 @@ export default function Home() {
         <nav className="flex-1 flex flex-col gap-1.5">
           <button
             onClick={() => setActiveTab("home")}
-            className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-left transition-all ${
+            className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-left transition-all cursor-pointer ${
               activeTab === "home"
                 ? "bg-red-50 text-primary"
                 : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
@@ -325,7 +373,7 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("employees")}
-            className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-left transition-all ${
+            className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-left transition-all cursor-pointer ${
               activeTab === "employees"
                 ? "bg-red-50 text-primary"
                 : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
@@ -337,7 +385,7 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("reports")}
-            className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-left transition-all ${
+            className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-left transition-all cursor-pointer ${
               activeTab === "reports"
                 ? "bg-red-50 text-primary"
                 : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
@@ -349,7 +397,7 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("settings")}
-            className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-left transition-all ${
+            className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-left transition-all cursor-pointer ${
               activeTab === "settings"
                 ? "bg-red-50 text-primary"
                 : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
@@ -362,14 +410,23 @@ export default function Home() {
 
         {/* Sidebar Footer User Card & Sandbox Controller */}
         <div className="pt-4 border-t border-zinc-150 flex flex-col gap-3">
-          <div className="flex items-center gap-3 px-1">
-            <div className="w-9 h-9 rounded-full bg-zinc-950 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-              {currentUser.avatar}
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-zinc-950 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                {currentUser.avatar}
+              </div>
+              <div className="min-w-0">
+                <h5 className="text-[11px] font-black text-zinc-900 leading-tight truncate">{currentUser.name}</h5>
+                <span className="text-[9px] font-bold text-zinc-400 capitalize block mt-0.5">{currentUser.role} Account</span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h5 className="text-[11px] font-black text-zinc-900 leading-tight truncate">{currentUser.name}</h5>
-              <span className="text-[9px] font-bold text-zinc-400 capitalize block mt-0.5">{currentUser.role} Account</span>
-            </div>
+            <button
+              onClick={logout}
+              title="Sign Out"
+              className="p-1.5 hover:bg-red-50 hover:text-red-650 text-zinc-400 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-red-100"
+            >
+              <LogOut size={15} />
+            </button>
           </div>
 
           <button
@@ -389,7 +446,7 @@ export default function Home() {
       <main className="flex-1 flex flex-col overflow-hidden relative">
         
         {/* Mobile Header (Visible on screens < md) */}
-        <header className="md:hidden h-14 bg-white border-b border-zinc-200 px-4 flex items-center justify-between shrink-0 z-10">
+        <header className="md:hidden h-14 bg-white border-b border-zinc-200 px-4 flex items-center justify-between shrink-0 z-10 select-none">
           <div className="flex items-center gap-2">
             <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-white border border-zinc-200 flex items-center justify-center">
               <Image
@@ -403,13 +460,21 @@ export default function Home() {
               Dan <span className="text-primary">- Moving Man</span>
             </h1>
           </div>
-          <span className="text-[9px] font-bold px-2 py-0.5 bg-zinc-100 text-zinc-700 rounded-full uppercase tracking-wider">
-            {currentUser.role}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-bold px-2 py-0.5 bg-zinc-100 text-zinc-700 rounded-full uppercase tracking-wider">
+              {currentUser.role}
+            </span>
+            <button
+              onClick={logout}
+              className="p-1 text-zinc-500 hover:text-red-500 rounded-lg transition-colors cursor-pointer"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
         </header>
 
         {/* Dynamic Inner Page Content */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-zinc-50 relative">
+        <div className="flex-1 flex flex-col overflow-hidden bg-zinc-55 relative">
           {renderScreen()}
         </div>
 
@@ -418,8 +483,8 @@ export default function Home() {
           <nav className="md:hidden h-16 bg-white border-t border-zinc-200 flex items-center justify-around px-2 shrink-0 select-none shadow-sm z-10">
             <button
               onClick={() => setActiveTab("home")}
-              className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-all ${
-                activeTab === "home" ? "text-primary scale-105" : "text-zinc-400 hover:text-zinc-650"
+              className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-all cursor-pointer ${
+                activeTab === "home" ? "text-primary scale-105 font-black" : "text-zinc-400 hover:text-zinc-650"
               }`}
             >
               <HomeIcon size={18} strokeWidth={activeTab === "home" ? 2.5 : 2} />
@@ -428,8 +493,8 @@ export default function Home() {
 
             <button
               onClick={() => setActiveTab("employees")}
-              className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-all ${
-                activeTab === "employees" ? "text-primary scale-105" : "text-zinc-400 hover:text-zinc-650"
+              className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-all cursor-pointer ${
+                activeTab === "employees" ? "text-primary scale-105 font-black" : "text-zinc-400 hover:text-zinc-650"
               }`}
             >
               <UsersIcon size={18} strokeWidth={activeTab === "employees" ? 2.5 : 2} />
@@ -438,8 +503,8 @@ export default function Home() {
 
             <button
               onClick={() => setActiveTab("reports")}
-              className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-all ${
-                activeTab === "reports" ? "text-primary scale-105" : "text-zinc-400 hover:text-zinc-650"
+              className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-all cursor-pointer ${
+                activeTab === "reports" ? "text-primary scale-105 font-black" : "text-zinc-400 hover:text-zinc-650"
               }`}
             >
               <ReportsIcon size={18} strokeWidth={activeTab === "reports" ? 2.5 : 2} />
@@ -450,8 +515,8 @@ export default function Home() {
 
             <button
               onClick={() => setActiveTab("settings")}
-              className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-all ${
-                activeTab === "settings" ? "text-primary scale-105" : "text-zinc-400 hover:text-zinc-650"
+              className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-all cursor-pointer ${
+                activeTab === "settings" ? "text-primary scale-105 font-black" : "text-zinc-400 hover:text-zinc-650"
               }`}
             >
               <SettingsIcon size={18} strokeWidth={activeTab === "settings" ? 2.5 : 2} />

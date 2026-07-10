@@ -2,13 +2,13 @@
 
 import React from "react";
 import { useApp, User } from "../context";
-import { UserCog, ToggleLeft, Key, UserCheck, HelpCircle, Shield, ChevronRight } from "lucide-react";
+import { UserCog, ToggleLeft, Key, UserCheck, HelpCircle, Shield, ChevronRight, LogOut } from "lucide-react";
 
 export const SettingsView: React.FC = () => {
-  const { currentUser, users, switchRole, loginAs } = useApp();
+  const { currentUser, users, switchRole, loginAs, logout } = useApp();
 
   const handleRoleToggle = () => {
-    const nextRole = currentUser.role === "manager" ? "employee" : "manager";
+    const nextRole = currentUser?.role === "manager" ? "employee" : "manager";
     switchRole(nextRole);
   };
 
@@ -28,12 +28,12 @@ export const SettingsView: React.FC = () => {
         {/* Profile Card */}
         <div className="bg-white rounded-2xl p-5 border border-zinc-150 shadow-3xs flex items-center gap-4">
           <div className="w-14 h-14 rounded-full bg-zinc-950 text-white flex items-center justify-center font-black text-lg shadow-sm">
-            {currentUser.avatar}
+            {currentUser?.avatar}
           </div>
           <div>
-            <h3 className="text-base font-black text-zinc-900 leading-tight">{currentUser.name}</h3>
-            <p className="text-xs font-bold text-zinc-500 mt-0.5">{currentUser.title}</p>
-            <p className="text-[10px] text-zinc-400 font-medium mt-1">{currentUser.email}</p>
+            <h3 className="text-base font-black text-zinc-900 leading-tight">{currentUser?.name}</h3>
+            <p className="text-xs font-bold text-zinc-500 mt-0.5">{currentUser?.title}</p>
+            <p className="text-[10px] text-zinc-400 font-medium mt-1">{currentUser?.email}</p>
           </div>
         </div>
 
@@ -43,7 +43,7 @@ export const SettingsView: React.FC = () => {
             <UserCog size={13} />
             Review Sandbox Controls
           </h4>
-          <p className="text-[11px] font-semibold text-zinc-600 leading-relaxed mb-4">
+          <p className="text-[11px] font-semibold text-zinc-650 leading-relaxed mb-4">
             Toggle roles or impersonate pre-seeded employees below to experience the workflows from different viewpoints.
           </p>
 
@@ -59,7 +59,7 @@ export const SettingsView: React.FC = () => {
                 onClick={handleRoleToggle}
                 className="flex items-center gap-2 bg-primary hover:bg-primary-hover text-white text-[10px] font-black uppercase tracking-wider py-2 px-3.5 rounded-lg transition-colors cursor-pointer"
               >
-                Switch to {currentUser.role === "manager" ? "Employee" : "Manager"}
+                Switch to {currentUser?.role === "manager" ? "Employee" : "Manager"}
               </button>
             </div>
 
@@ -68,7 +68,7 @@ export const SettingsView: React.FC = () => {
               <span className="block text-xs font-bold text-zinc-800 mb-2.5">Sign in as specific user:</span>
               <div className="flex flex-wrap gap-2">
                 {users.map((u) => {
-                  const isActive = currentUser.id === u.id;
+                  const isActive = currentUser?.id === u.id;
                   return (
                     <button
                       key={u.id}
@@ -117,6 +117,22 @@ export const SettingsView: React.FC = () => {
               </div>
             </div>
             <ChevronRight size={16} className="text-zinc-300" />
+          </div>
+
+          <div 
+            onClick={logout}
+            className="flex items-center justify-between bg-white border border-red-105 hover:bg-red-50/50 rounded-2xl p-4 cursor-pointer transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-red-50 p-2.5 rounded-xl text-red-600">
+                <LogOut size={16} />
+              </div>
+              <div>
+                <span className="block text-xs font-extrabold text-red-700">Log Out</span>
+                <span className="block text-[10px] text-zinc-400 font-semibold mt-0.5">End your portal session securely</span>
+              </div>
+            </div>
+            <ChevronRight size={16} className="text-red-300" />
           </div>
         </div>
         </div>

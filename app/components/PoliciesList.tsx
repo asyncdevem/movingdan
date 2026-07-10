@@ -14,7 +14,8 @@ import {
   Clock as ClockIcon,
   Receipt,
   PhoneCall,
-  ShieldAlert
+  ShieldAlert,
+  Plus
 } from "lucide-react";
 
 // Icon mapping helper
@@ -42,7 +43,7 @@ export const PoliciesList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Get current user's signatures
-  const userSignatures = signatures.filter((s) => s.employeeId === currentUser.id);
+  const userSignatures = signatures.filter((s) => s.employeeId === currentUser?.id);
   const signedPolicyIds = new Set(userSignatures.map((s) => s.policyId));
 
   // Filter policies based on search query
@@ -56,14 +57,25 @@ export const PoliciesList: React.FC = () => {
     <div className="flex-1 flex flex-col overflow-hidden">
       
       {/* Top Header Navigation */}
-      <div className="h-14 bg-white border-b border-zinc-100 px-4 flex items-center gap-3 shrink-0">
-        <button
-          onClick={() => setNavigation("home")}
-          className="p-1 rounded-lg hover:bg-zinc-100 transition-colors"
-        >
-          <ArrowLeft size={20} className="text-zinc-700" />
-        </button>
-        <h2 className="text-base font-extrabold text-zinc-900">Written Policies</h2>
+      <div className="h-14 bg-white border-b border-zinc-100 px-4 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setNavigation("home")}
+            className="p-1 rounded-lg hover:bg-zinc-100 transition-colors"
+          >
+            <ArrowLeft size={20} className="text-zinc-700" />
+          </button>
+          <h2 className="text-base font-extrabold text-zinc-900">Written Policies</h2>
+        </div>
+        {currentUser?.role === "manager" && (
+          <button
+            onClick={() => setNavigation("add-policy")}
+            className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-white rounded-xl transition-all flex items-center gap-1.5 text-xs font-black uppercase tracking-wider shadow-xs hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+          >
+            <Plus size={14} />
+            Add Policy
+          </button>
+        )}
       </div>
 
       {/* Main Container (Scrollable) */}

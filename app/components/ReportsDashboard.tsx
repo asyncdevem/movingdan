@@ -156,7 +156,7 @@ export const ReportsDashboard: React.FC = () => {
                         {warning.severity}
                       </span>
                     </div>
-                    <p className="text-[10px] font-bold text-zinc-500 mt-0.5">{warning.category} • {warning.date}</p>
+                    <p className="text-[10px] font-bold text-zinc-500 mt-0.5">{warning.warningType || "Warning"} • {warning.date}</p>
                     <p className="text-[11px] text-zinc-600 font-medium leading-relaxed mt-2 bg-zinc-50 p-2 rounded-lg border border-zinc-100 italic">
                       &quot;{warning.details}&quot;
                     </p>

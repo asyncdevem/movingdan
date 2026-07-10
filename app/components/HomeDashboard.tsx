@@ -7,14 +7,14 @@ import { FileText, AlertTriangle, UserPlus, BarChart3, Lock, ShieldCheck, Chevro
 
 export const HomeDashboard: React.FC = () => {
   const { currentUser, setNavigation, policies, signatures, switchRole } = useApp();
-  const isManager = currentUser.role === "manager";
+  const isManager = currentUser?.role === "manager";
 
   const handleRoleToggle = () => {
     switchRole(isManager ? "employee" : "manager");
   };
 
   // Calculate pending policies for the current user
-  const userSignatures = signatures.filter((s) => s.employeeId === currentUser.id);
+  const userSignatures = signatures.filter((s) => s.employeeId === currentUser?.id);
   const pendingCount = policies.length - userSignatures.length;
 
   return (
@@ -23,7 +23,7 @@ export const HomeDashboard: React.FC = () => {
       
       {/* Header & Branding */}
       <div className="flex flex-col items-center justify-center text-center mt-2 mb-6">
-        <div className="relative w-28 h-28 mb-3 drop-shadow-md rounded-2xl overflow-hidden bg-white border border-zinc-100 flex items-center justify-center">
+        <div className="relative w-28 h-28 mb-3 drop-shadow-md rounded-2xl overflow-hidden bg-white border border-zinc-105 flex items-center justify-center">
           <Image
             src="/dan_mascot_logo.png"
             alt="Dan The Moving Man Logo"
@@ -48,7 +48,7 @@ export const HomeDashboard: React.FC = () => {
             <UserCog size={18} />
           </div>
           <div>
-            <p className="text-[11px] font-black uppercase text-primary tracking-wider">Active Role: {currentUser.role}</p>
+            <p className="text-[11px] font-black uppercase text-primary tracking-wider">Active Role: {currentUser?.role}</p>
             <p className="text-[10px] text-zinc-500 font-semibold mt-0.5">
               {isManager 
                 ? "Full access to warnings, onboarding, and compliance metrics." 
@@ -69,17 +69,17 @@ export const HomeDashboard: React.FC = () => {
       <div className="bg-white rounded-2xl p-4 border border-zinc-100 shadow-xs mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-zinc-900 text-white flex items-center justify-center font-bold text-sm">
-            {currentUser.avatar}
+            {currentUser?.avatar}
           </div>
           <div>
             <p className="text-xs text-zinc-500 font-medium">Welcome back,</p>
-            <h3 className="text-sm font-bold text-zinc-800">{currentUser.name}</h3>
+            <h3 className="text-sm font-bold text-zinc-800">{currentUser?.name}</h3>
           </div>
         </div>
         <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider ${
           isManager ? "bg-red-50 text-primary border border-red-100" : "bg-zinc-100 text-zinc-700"
         }`}>
-          {currentUser.role}
+          {currentUser?.role}
         </span>
       </div>
 
@@ -178,6 +178,7 @@ export const HomeDashboard: React.FC = () => {
               width={36}
               height={18}
               className="object-contain"
+              style={{ width: "auto", height: "auto" }}
             />
           </div>
         </div>
