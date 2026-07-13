@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useApp, User, Warning } from "../context";
 import { 
   ArrowLeft, Search, Calendar, ChevronRight, AlertTriangle, 
@@ -9,8 +10,9 @@ import {
 } from "lucide-react";
 
 export const WarningForm: React.FC = () => {
+  const router = useRouter();
   const { 
-    users, warnings, issueWarning, setNavigation, 
+    users, warnings, issueWarning, 
     selectedEmployeeId, setSelectedEmployeeId, updateWarningStatus, currentUser 
   } = useApp();
 
@@ -234,11 +236,11 @@ export const WarningForm: React.FC = () => {
   const handleBack = () => {
     if (step === 8) {
       setSelectedEmployeeId(null);
-      setNavigation("home");
+      router.push("/manager");
     } else if (step > 1) {
       goToStep(step - 1);
     } else {
-      setNavigation("home");
+      router.back();
     }
   };
 
@@ -976,7 +978,7 @@ export const WarningForm: React.FC = () => {
                 <button
                   onClick={() => {
                     setSelectedEmployeeId(null);
-                    setNavigation("home");
+                    router.push("/manager");
                   }}
                   className="w-full py-3 border border-zinc-250 hover:bg-zinc-50 text-zinc-700 rounded-2xl text-xs font-black uppercase tracking-wider text-center transition-all cursor-pointer"
                 >

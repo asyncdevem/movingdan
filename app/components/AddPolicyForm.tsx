@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useApp } from "../context";
 import { 
   ArrowLeft, ClipboardList, Shield, Info, Truck, 
@@ -8,7 +9,8 @@ import {
 } from "lucide-react";
 
 export const AddPolicyForm: React.FC = () => {
-  const { addPolicy, setNavigation } = useApp();
+  const router = useRouter();
+  const { addPolicy } = useApp();
   const [success, setSuccess] = useState(false);
 
   // Form states
@@ -58,7 +60,7 @@ export const AddPolicyForm: React.FC = () => {
 
     setSuccess(true);
     setTimeout(() => {
-      setNavigation("policy-list");
+      router.push("/manager/policies");
     }, 1500);
   };
 
@@ -68,7 +70,7 @@ export const AddPolicyForm: React.FC = () => {
       {/* Top Header Navigation */}
       <div className="h-14 bg-white border-b border-zinc-100 px-4 flex items-center gap-3 shrink-0">
         <button
-          onClick={() => setNavigation("policy-list")}
+          onClick={() => router.back()}
           className="p-1 rounded-lg hover:bg-zinc-100 transition-colors cursor-pointer text-zinc-650"
         >
           <ArrowLeft size={20} />
@@ -188,7 +190,7 @@ export const AddPolicyForm: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => setNavigation("policy-list")}
+              onClick={() => router.back()}
               className="px-6 py-3.5 bg-white hover:bg-zinc-50 border border-zinc-250 text-zinc-705 rounded-2xl text-xs font-black uppercase tracking-wider text-center transition-all cursor-pointer"
             >
               Cancel

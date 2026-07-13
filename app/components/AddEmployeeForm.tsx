@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useApp } from "../context";
 import { ArrowLeft, UserPlus, Mail, Phone, Calendar, ShieldCheck, KeyRound, CheckCircle, Eye, EyeOff } from "lucide-react";
 
 export const AddEmployeeForm: React.FC = () => {
-  const { addEmployee, setNavigation } = useApp();
+  const router = useRouter();
+  const { addEmployee } = useApp();
   const [success, setSuccess] = useState(false);
 
   // Form states
@@ -55,7 +57,7 @@ export const AddEmployeeForm: React.FC = () => {
 
       setSuccess(true);
       setTimeout(() => {
-        setNavigation("home");
+        router.push("/manager");
       }, 1500);
     } catch (err: any) {
       // Enhanced error messages
@@ -85,7 +87,7 @@ export const AddEmployeeForm: React.FC = () => {
       {/* Top Header Navigation */}
       <div className="h-14 bg-white border-b border-zinc-100 px-4 flex items-center gap-3 shrink-0">
         <button
-          onClick={() => setNavigation("home")}
+          onClick={() => router.back()}
           className="p-1 rounded-lg hover:bg-zinc-100 transition-colors"
         >
           <ArrowLeft size={20} className="text-zinc-700" />

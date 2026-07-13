@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useApp } from "../context";
 import { ArrowLeft, BarChart3, AlertTriangle, FileText, CheckCircle2, XCircle, Download, Clock } from "lucide-react";
 import * as XLSX from 'xlsx';
 
 export const ReportsDashboard: React.FC = () => {
-  const { policies, signatures, warnings, users, setNavigation, currentUser } = useApp();
+  const router = useRouter();
+  const { policies, signatures, warnings, users, currentUser } = useApp();
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   // Filter out managers from compliance reports
@@ -172,7 +174,7 @@ export const ReportsDashboard: React.FC = () => {
       <div className="h-14 bg-white border-b border-zinc-100 px-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setNavigation("home")}
+            onClick={() => router.back()}
             className="p-1 rounded-lg hover:bg-zinc-100 transition-colors"
           >
             <ArrowLeft size={20} className="text-zinc-700" />
