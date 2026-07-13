@@ -53,10 +53,10 @@ export const ReportsDashboard: React.FC = () => {
       const wb = XLSX.utils.book_new();
 
       // Sheet 1: Overall Compliance Summary
-      const summaryData = [
+      const summaryData: (string | number)[][] = [
         ['DAN - THE MOVING MAN', '', '', ''],
         ['Compliance Report', '', '', ''],
-        ['Generated:', new Date().toLocaleString()],
+        ['Generated:', new Date().toLocaleString(), '', ''],
         ['', '', '', ''],
         ['OVERALL METRICS', '', '', ''],
         ['Total Employees:', movers.length, '', ''],
@@ -82,7 +82,7 @@ export const ReportsDashboard: React.FC = () => {
       XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
 
       // Sheet 2: Employee Compliance Detail
-      const employeeData = [
+      const employeeData: (string | number)[][] = [
         ['Employee Name', 'Email', 'Title', 'Policies Signed', 'Total Policies', 'Compliance %', 'Warnings']
       ];
 
@@ -106,7 +106,7 @@ export const ReportsDashboard: React.FC = () => {
       XLSX.utils.book_append_sheet(wb, ws2, 'Employee Details');
 
       // Sheet 3: Warnings Log
-      const warningsData = [
+      const warningsData: (string | number)[][] = [
         ['Date', 'Employee', 'Warning Type', 'Severity', 'Cost', 'Incident Details', 'Issued By', 'Status']
       ];
 
@@ -127,7 +127,7 @@ export const ReportsDashboard: React.FC = () => {
       XLSX.utils.book_append_sheet(wb, ws3, 'Warnings');
 
       // Sheet 4: Policy Signatures
-      const signaturesData = [
+      const signaturesData: (string | number)[][] = [
         ['Employee Name', 'Policy Name', 'Signed Date', 'Email']
       ];
 

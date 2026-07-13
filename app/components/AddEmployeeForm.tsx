@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useApp } from "../context";
-import { ArrowLeft, UserPlus, Mail, Phone, Calendar, ShieldCheck, KeyRound, CheckCircle } from "lucide-react";
+import { ArrowLeft, UserPlus, Mail, Phone, Calendar, ShieldCheck, KeyRound, CheckCircle, Eye, EyeOff } from "lucide-react";
 
 export const AddEmployeeForm: React.FC = () => {
   const { addEmployee, setNavigation } = useApp();
@@ -16,6 +16,7 @@ export const AddEmployeeForm: React.FC = () => {
   const [role, setRole] = useState<"employee" | "manager">("employee");
   const [startDate, setStartDate] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [validationError, setValidationError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
@@ -242,13 +243,20 @@ export const AddEmployeeForm: React.FC = () => {
                 <KeyRound size={14} />
               </span>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Minimum 4 characters"
-                className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl py-2.5 pl-10 pr-4 text-xs font-semibold text-zinc-800 outline-none transition-all"
+                className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl py-2.5 pl-10 pr-10 text-xs font-semibold text-zinc-800 outline-none transition-all"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
+              >
+                {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
             </div>
           </div>
 

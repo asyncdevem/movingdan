@@ -30,6 +30,7 @@ export const FirebaseAuthScreen: React.FC<{ onAuthSuccess: (userId: string) => v
   // Email/Password fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   
   // Phone fields
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -428,12 +429,19 @@ export const FirebaseAuthScreen: React.FC<{ onAuthSuccess: (userId: string) => v
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
                         <input
-                          type="password"
+                          type={showPassword ? "text" : "password"}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-10 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-semibold text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                          className="w-full pl-10 pr-12 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-semibold text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
+                        >
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
                       </div>
                     </div>
                   </div>
