@@ -2,17 +2,13 @@
 
 import React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useApp } from "../context";
-import { FileText, AlertTriangle, UserPlus, BarChart3, Lock, ShieldCheck, ChevronRight } from "lucide-react";
+import { FileText, AlertTriangle, UserPlus, BarChart3, ShieldCheck, ChevronRight } from "lucide-react";
 
 export const HomeDashboard: React.FC = () => {
-  const { currentUser, setNavigation, policies, signatures } = useApp();
+  const { currentUser, policies, signatures } = useApp();
   const isManager = currentUser?.role === "manager";
-
-  // Debug logging
-  console.log('HomeDashboard - Current User:', currentUser);
-  console.log('HomeDashboard - Is Manager:', isManager);
-  console.log('HomeDashboard - User Role:', currentUser?.role);
 
   // Calculate pending policies for the current user
   const userSignatures = signatures.filter((s) => s.employeeId === currentUser?.id);
@@ -67,9 +63,9 @@ export const HomeDashboard: React.FC = () => {
 
       {/* Employee compliance notice */}
       {!isManager && (
-        <div 
-          onClick={() => setNavigation("policy-list")}
-          className={`rounded-2xl p-4 mb-6 border cursor-pointer transition-all duration-200 hover:scale-[1.01] ${
+        <Link 
+          href="/employee/policies"
+          className={`rounded-2xl p-4 mb-6 border transition-all duration-200 hover:scale-[1.01] block ${
             pendingCount > 0 
               ? "bg-red-50/55 border-red-100 hover:bg-red-50" 
               : "bg-emerald-50/40 border-emerald-100 hover:bg-emerald-50/60"
@@ -95,14 +91,14 @@ export const HomeDashboard: React.FC = () => {
               {pendingCount > 0 ? <FileText size={18} /> : <ShieldCheck size={18} />}
             </div>
           </div>
-        </div>
+        </Link>
       )}
 
       {/* Primary Action Buttons (Vertical Stack) */}
       <div className="flex flex-col gap-4">
         {/* Written Policies (Red Button) */}
-        <button
-          onClick={() => setNavigation("policy-list")}
+        <Link
+          href={isManager ? "/manager" : "/employee/policies"}
           className="w-full flex items-center justify-between bg-primary hover:bg-primary-hover active:scale-[0.99] text-white py-4.5 px-5 rounded-2xl shadow-md transition-all duration-200 text-left font-bold"
         >
           <div className="flex items-center gap-4">
@@ -115,103 +111,90 @@ export const HomeDashboard: React.FC = () => {
             </div>
           </div>
           <ChevronRight size={20} className="text-white/70" />
-        </button>
+        </Link>
 
-        {/* Written Warning (Dark Button) */}
-        <div className="relative">
-          <button
-            disabled={!isManager}
-            onClick={() => setNavigation("warning-form")}
-            className={`w-full flex items-center justify-between py-4.5 px-5 rounded-2xl transition-all duration-200 text-left font-bold border ${
-              isManager 
-                ? "bg-zinc-900 hover:bg-zinc-800 text-white border-transparent shadow-md active:scale-[0.99] cursor-pointer" 
-                : "bg-zinc-100 text-zinc-400 border-zinc-200 cursor-not-allowed"
-            }`}
+        {/* Written Warning (Manager Only) */}
+        {isManager && (
+          <Link
+            href="/manager/warnings/new"
+            className="w-full flex items-center justify-between bg-zinc-900 hover:bg-zinc-800 text-white border-transparent shadow-md active:scale-[0.99] py-4.5 px-5 rounded-2xl transition-all duration-200 text-left font-bold"
           >
             <div className="flex items-center gap-4">
-              <div className={`p-2.5 rounded-xl ${isManager ? "bg-white/10" : "bg-zinc-200"}`}>
-                <AlertTriangle size={22} className={isManager ? "text-white" : "text-zinc-400"} />
+              <div className="bg-white/10 p-2.5 rounded-xl">
+                <AlertTriangle size={22} className="text-white" />
               </div>
               <div>
-                <span className="block text-base tracking-tight font-extrabold flex items-center gap-1.5">
+                <span className="block text-base tracking-tight font-extrabold">
                   Issue Written Warning
-                  {!isManager && <Lock size={13} className="text-zinc-400 inline" />}
                 </span>
-                <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mt-0.5">
-                  {isManager ? "Record incident & issue notice" : "Manager-only access"}
+                <span className="block text-xs font-medium text-white/80 mt-0.5">
+                  Record incident & issue notice
                 </span>
               </div>
             </div>
-            <ChevronRight size={20} className={isManager ? "text-white/70" : "text-zinc-300"} />
-          </button>
-        </div>
+            <ChevronRight size={20} className="text-white/70" />
+          </Link>
+        )}
       </div>
 
-      {/* Visual Divider (Red line with custom moving truck logo) */}
-      <div className="relative my-8 flex items-center justify-center">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t-2 border-primary/25"></div>
-        </div>
-        <div className="relative z-10 bg-neutral-50 px-4 flex items-center justify-center">
-          <div className="relative w-12 h-6 border border-zinc-200 rounded-full bg-white flex items-center justify-center shadow-xs overflow-hidden">
-            <Image
-              src="/moving_truck_logo.png"
-              alt="Truck Icon"
-              width={36}
-              height={18}
-              className="object-contain"
-              style={{ width: "auto", height: "auto" }}
-            />
+      {/* Manager-Only Secondary Actions */}
+      {isManager && (
+        <>
+          {/* Visual Divider (Red line with custom moving truck logo) */}
+          <div className="relative my-8 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t-2 border-primary/25"></div>
+            </div>
+            <div className="relative z-10 bg-neutral-50 px-4 flex items-center justify-center">
+              <div className="relative w-12 h-6 border border-zinc-200 rounded-full bg-white flex items-center justify-center shadow-xs overflow-hidden">
+                <Image
+                  src="/moving_truck_logo.png"
+                  alt="Truck Icon"
+                  width={36}
+                  height={18}
+                  className="object-contain"
+                  style={{ width: "auto", height: "auto" }}
+                />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Secondary Action Buttons (Side-by-Side Grid) */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Add Employee */}
-        <button
-          disabled={!isManager}
-          onClick={() => setNavigation("add-employee")}
-          className={`flex flex-col items-start p-4 rounded-2xl border transition-all duration-200 text-left ${
-            isManager
-              ? "bg-white hover:bg-zinc-50 border-zinc-200 hover:border-zinc-300 shadow-xs cursor-pointer active:scale-[0.98]"
-              : "bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed opacity-75"
-          }`}
-        >
-          <div className={`p-2.5 rounded-xl mb-3 ${isManager ? "bg-red-50 text-primary" : "bg-zinc-200 text-zinc-400"}`}>
-            <UserPlus size={20} />
-          </div>
-          <span className="text-sm font-extrabold text-zinc-800 block flex items-center gap-1">
-            Add Employee
-            {!isManager && <Lock size={11} className="text-zinc-400" />}
-          </span>
-          <span className="text-[10px] font-medium text-zinc-500 mt-0.5">
-            Register new movers
-          </span>
-        </button>
+          {/* Secondary Action Buttons (Side-by-Side Grid) */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Add Employee */}
+            <Link
+              href="/manager/employees/add"
+              className="flex flex-col items-start p-4 rounded-2xl border bg-white hover:bg-zinc-50 border-zinc-200 hover:border-zinc-300 shadow-xs active:scale-[0.98] transition-all duration-200 text-left"
+            >
+              <div className="p-2.5 rounded-xl mb-3 bg-red-50 text-primary">
+                <UserPlus size={20} />
+              </div>
+              <span className="text-sm font-extrabold text-zinc-800 block">
+                Add Employee
+              </span>
+              <span className="text-[10px] font-medium text-zinc-500 mt-0.5">
+                Register new movers
+              </span>
+            </Link>
 
-        {/* Generate Report */}
-        <button
-          disabled={!isManager}
-          onClick={() => setNavigation("report-view")}
-          className={`flex flex-col items-start p-4 rounded-2xl border transition-all duration-200 text-left ${
-            isManager
-              ? "bg-white hover:bg-zinc-50 border-zinc-200 hover:border-zinc-300 shadow-xs cursor-pointer active:scale-[0.98]"
-              : "bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed opacity-75"
-          }`}
-        >
-          <div className={`p-2.5 rounded-xl mb-3 ${isManager ? "bg-zinc-100 text-zinc-800" : "bg-zinc-200 text-zinc-400"}`}>
-            <BarChart3 size={20} />
+            {/* Generate Report */}
+            <Link
+              href="/manager/reports"
+              className="flex flex-col items-start p-4 rounded-2xl border bg-white hover:bg-zinc-50 border-zinc-200 hover:border-zinc-300 shadow-xs active:scale-[0.98] transition-all duration-200 text-left"
+            >
+              <div className="p-2.5 rounded-xl mb-3 bg-zinc-100 text-zinc-800">
+                <BarChart3 size={20} />
+              </div>
+              <span className="text-sm font-extrabold text-zinc-800 block">
+                Generate Report
+              </span>
+              <span className="text-[10px] font-medium text-zinc-500 mt-0.5">
+                Compliance analytics
+              </span>
+            </Link>
           </div>
-          <span className="text-sm font-extrabold text-zinc-800 block flex items-center gap-1">
-            Generate Report
-            {!isManager && <Lock size={11} className="text-zinc-400" />}
-          </span>
-          <span className="text-[10px] font-medium text-zinc-500 mt-0.5">
-            Compliance analytics
-          </span>
-        </button>
-      </div>
+        </>
+      )}
       </div>
 
     </div>

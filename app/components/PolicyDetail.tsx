@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import { useApp } from "../context";
+import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, CheckCircle, RotateCcw, PenTool, Calendar, ShieldCheck } from "lucide-react";
 import { PolicyIcon } from "./PoliciesList";
 
@@ -10,19 +11,21 @@ export const PolicyDetail: React.FC = () => {
     currentUser, 
     policies, 
     signatures, 
-    selectedPolicyId, 
-    signPolicy, 
-    setNavigation 
+    signPolicy
   } = useApp();
+  
+  const router = useRouter();
+  const params = useParams();
+  const policyId = params.id as string;
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const policy = policies.find((p) => p.id === selectedPolicyId);
+  const policy = policies.find((p) => p.id === policyId);
   const userSignature = signatures.find(
-    (s) => s.policyId === selectedPolicyId && s.employeeId === currentUser?.id
+    (s) => s.policyId === policyId && s.employeeId === currentUser?.id
   );
 
   const isSigned = !!userSignature;
@@ -51,7 +54,7 @@ export const PolicyDetail: React.FC = () => {
     // Set width and height in style attributes for correct layout sizing
     canvas.style.width = `${rect.width}px`;
     canvas.style.height = `${rect.height}px`;
-  }, [isSigned, selectedPolicyId]);
+  }, [isSigned, policyId]);
 
   // Drawing mouse handlers
   const getCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
@@ -124,11 +127,11 @@ export const PolicyDetail: React.FC = () => {
     const canvas = canvasRef.current;
     const signatureData = canvas.toDataURL("image/png");
     
-    if (selectedPolicyId) {
-      signPolicy(selectedPolicyId, signatureData);
+    if (policyId) {
+      signPolicy(policyId, signatureData);
       setSuccess(true);
       setTimeout(() => {
-        setNavigation("policy-list");
+        router.back();
       }, 1500);
     }
   };
@@ -137,7 +140,7 @@ export const PolicyDetail: React.FC = () => {
     return (
       <div className="p-5 text-center">
         <p className="text-sm font-bold text-zinc-500">Policy not found.</p>
-        <button onClick={() => setNavigation("policy-list")} className="mt-4 text-xs font-bold text-primary">
+        <button onClick={() => router.back()} className="mt-4 text-xs font-bold text-primary">
           Back to List
         </button>
       </div>
@@ -181,7 +184,7 @@ export const PolicyDetail: React.FC = () => {
       <div className="h-14 bg-white border-b border-zinc-100 px-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setNavigation("policy-list")}
+            onClick={() => router.back()}
             className="p-1 rounded-lg hover:bg-zinc-100 transition-colors"
           >
             <ArrowLeft size={20} className="text-zinc-700" />

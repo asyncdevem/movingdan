@@ -75,7 +75,7 @@ export default function EmployeeCompliancePage() {
                     </div>
                     <p className="text-xs font-bold text-zinc-500 mt-1">Issued {warning.date} • Impact: ${warning.cost}</p>
                     <p className="text-xs text-zinc-650 leading-relaxed mt-3 bg-zinc-50 p-4 rounded-xl border border-zinc-150 italic text-zinc-700 font-semibold">
-                      &quot;{warning.incidentDetails || warning.details}&quot;
+                      &quot;{warning.incidentDetails || warning.details || "No details provided"}&quot;
                     </p>
                     <div className="mt-3 flex items-center justify-between text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
                       <span>Issued by: {warning.issuedBy}</span>

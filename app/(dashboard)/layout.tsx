@@ -12,7 +12,8 @@ import {
   Settings as SettingsIcon,
   LogOut,
   FileText,
-  ShieldCheck
+  ShieldCheck,
+  AlertTriangle
 } from "lucide-react";
 
 export default function DashboardLayout({
@@ -27,6 +28,7 @@ export default function DashboardLayout({
   const managerNavItems = [
     { href: "/manager", label: "Home", icon: HomeIcon },
     { href: "/manager/employees", label: "Directory", icon: UsersIcon },
+    { href: "/manager/warnings", label: "Warnings", icon: AlertTriangle },
     { href: "/manager/reports", label: "Reports", icon: ReportsIcon },
     { href: "/settings", label: "Settings", icon: SettingsIcon },
   ];

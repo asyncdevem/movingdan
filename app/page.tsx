@@ -10,13 +10,17 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
+    console.log('Home useEffect - isLoading:', isLoading, 'currentUser:', currentUser);
     if (!isLoading && currentUser) {
       // Redirect authenticated users to their dashboard
-      if (currentUser.role === "manager") {
-        router.push("/manager");
-      } else {
-        router.push("/employee");
-      }
+      const role = currentUser.role || 'employee';
+      const redirectPath = role === "manager" ? "/manager" : "/employee";
+      console.log('Redirecting to:', redirectPath, 'role:', role);
+      
+      // Use a small timeout to ensure context is fully loaded
+      setTimeout(() => {
+        router.replace(redirectPath);
+      }, 100);
     }
   }, [currentUser, isLoading, router]);
 

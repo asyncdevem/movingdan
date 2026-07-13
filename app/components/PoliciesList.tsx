@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import { useApp } from "../context";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { 
   ArrowLeft, 
   ClipboardList, 
@@ -39,7 +41,8 @@ export const PolicyIcon = ({ name, size = 20, className = "" }: { name: string; 
 };
 
 export const PoliciesList: React.FC = () => {
-  const { policies, signatures, currentUser, setNavigation } = useApp();
+  const { policies, signatures, currentUser } = useApp();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
 
   // Get current user's signatures
@@ -60,7 +63,7 @@ export const PoliciesList: React.FC = () => {
       <div className="h-14 bg-white border-b border-zinc-100 px-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setNavigation("home")}
+            onClick={() => router.back()}
             className="p-1 rounded-lg hover:bg-zinc-100 transition-colors"
           >
             <ArrowLeft size={20} className="text-zinc-700" />
@@ -68,13 +71,13 @@ export const PoliciesList: React.FC = () => {
           <h2 className="text-base font-extrabold text-zinc-900">Written Policies</h2>
         </div>
         {currentUser?.role === "manager" && (
-          <button
-            onClick={() => setNavigation("add-policy")}
-            className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-white rounded-xl transition-all flex items-center gap-1.5 text-xs font-black uppercase tracking-wider shadow-xs hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+          <Link
+            href="/manager/policies/add"
+            className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-white rounded-xl transition-all flex items-center gap-1.5 text-xs font-black uppercase tracking-wider shadow-xs hover:scale-[1.02] active:scale-[0.98]"
           >
             <Plus size={14} />
             Add Policy
-          </button>
+          </Link>
         )}
       </div>
 
@@ -114,10 +117,13 @@ export const PoliciesList: React.FC = () => {
           {filteredPolicies.length > 0 ? (
             filteredPolicies.map((policy) => {
               const isSigned = signedPolicyIds.has(policy.id);
+              const role = currentUser?.role || 'employee';
+              const detailUrl = role === 'manager' ? `/manager/policies/${policy.id}` : `/employee/policies/${policy.id}`;
+              
               return (
-                <button
+                <Link
                   key={policy.id}
-                  onClick={() => setNavigation("policy-detail", policy.id)}
+                  href={detailUrl}
                   className="bg-white hover:bg-zinc-50 border border-zinc-150 hover:border-zinc-250 rounded-2xl p-4 flex items-center justify-between text-left transition-all duration-200 active:scale-[0.99] group shadow-2xs"
                 >
                   <div className="flex items-start gap-3.5 pr-2">
@@ -156,7 +162,7 @@ export const PoliciesList: React.FC = () => {
                     </div>
                   </div>
                   <ChevronRight size={18} className="text-zinc-300 group-hover:text-zinc-500 transition-colors shrink-0" />
-                </button>
+                </Link>
               );
             })
           ) : (

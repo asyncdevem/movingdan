@@ -117,7 +117,7 @@ export const ReportsDashboard: React.FC = () => {
           warning.warningType,
           warning.severity,
           `$${warning.cost}`,
-          warning.incidentDetails || warning.details,
+          warning.incidentDetails || warning.details || "No details provided",
           warning.issuedBy,
           warning.status
         ]);
@@ -292,7 +292,7 @@ export const ReportsDashboard: React.FC = () => {
                     </div>
                     <p className="text-[10px] font-bold text-zinc-500 mt-0.5">{warning.warningType || "Warning"} • {warning.date}</p>
                     <p className="text-[11px] text-zinc-600 font-medium leading-relaxed mt-2 bg-zinc-50 p-2 rounded-lg border border-zinc-100 italic">
-                      &quot;{warning.details}&quot;
+                      &quot;{warning.incidentDetails || warning.details || "No details provided"}&quot;
                     </p>
                     <div className="mt-2.5 flex items-center justify-between text-[9px] text-zinc-400 font-bold uppercase tracking-wider">
                       <span>Issued by: {warning.issuedBy}</span>
