@@ -1,0 +1,45 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check authentication
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is a manager
+    function isManager() {
+      return isAuthenticated() && 
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'manager';
+    }
+    
+    // Warning photos - only managers can upload
+    match /warnings/{warningId}/photos/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isManager();
+    }
+    
+    // Signature images - users can upload their own signatures
+    match /signatures/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Profile pictures - users can upload their own profile pictures
+    match /profiles/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Policy documents - only managers can upload
+    match /policies/{policyId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isManager();
+    }
+    
+    // Deny everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

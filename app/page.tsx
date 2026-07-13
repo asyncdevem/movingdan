@@ -11,6 +11,7 @@ import { AddEmployeeForm } from "./components/AddEmployeeForm";
 import { ReportsDashboard } from "./components/ReportsDashboard";
 import { SettingsView } from "./components/SettingsView";
 import { AuthScreen } from "./components/AuthScreen";
+import { FirebaseAuthScreen } from "./components/FirebaseAuthScreen";
 import { AddPolicyForm } from "./components/AddPolicyForm";
 import { 
   Home as HomeIcon, 
@@ -25,7 +26,6 @@ import {
   CheckCircle,
   FileCheck,
   ChevronRight,
-  UserCog,
   LogOut
 } from "lucide-react";
 
@@ -33,8 +33,9 @@ import {
 // 1. Employee Directory Tab (Responsive grid)
 // ==========================================
 const EmployeeDirectory: React.FC = () => {
-  const { users, currentUser, signatures, policies, setNavigation, setSelectedEmployeeId } = useApp();
+  const { users, currentUser, signatures, policies, setNavigation, setSelectedEmployeeId, disableUser, deleteUser } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
+  const [actioningUserId, setActioningUserId] = useState<string | null>(null);
   const isManager = currentUser?.role === "manager";
 
   const directoryUsers = users.filter((u) => u.role === "employee");
@@ -43,6 +44,45 @@ const EmployeeDirectory: React.FC = () => {
     u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleBlockUser = async (userId: string, isDisabled: boolean) => {
+    if (!confirm(`Are you sure you want to ${isDisabled ? 'unblock' : 'block'} this user?`)) return;
+    
+    setActioningUserId(userId);
+    try {
+      await disableUser(userId, !isDisabled);
+      alert(`User ${isDisabled ? 'unblocked' : 'blocked'} successfully!`);
+    } catch (error: any) {
+      alert(`Failed to ${isDisabled ? 'unblock' : 'block'} user: ${error.message}`);
+    } finally {
+      setActioningUserId(null);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userEmail: string) => {
+    const confirmMsg = `⚠️ WARNING: This will remove the user from the directory, but their Firebase Authentication account will remain.
+
+To fully delete (recommended):
+1. Go to Firebase Console → Authentication
+2. Find user: ${userEmail}
+3. Click the 3 dots → Delete account
+
+OR set up Firebase Admin SDK for complete deletion.
+
+Do you want to remove this user from the directory?`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    setActioningUserId(userId);
+    try {
+      await deleteUser(userId);
+      alert('✅ User removed from directory!\n\n⚠️ Note: Firebase Auth account still exists. To fully delete, use Firebase Console.');
+    } catch (error: any) {
+      alert(`Failed to delete user: ${error.message}`);
+    } finally {
+      setActioningUserId(null);
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -122,23 +162,42 @@ const EmployeeDirectory: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="mt-6 pt-4 border-t border-zinc-150 flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-bold text-zinc-400 truncate max-w-[100px]">{user.email}</span>
-                    <div className="flex items-center gap-2">
+                  <div className="mt-6 pt-4 border-t border-zinc-150">
+                    <span className="text-[10px] font-bold text-zinc-400 truncate block mb-3">{user.email}</span>
+                    <div className="flex flex-col gap-2">
                       {isManager && (
-                        <button
-                          onClick={() => {
-                            setSelectedEmployeeId(user.id);
-                            setNavigation("warning-form");
-                          }}
-                          className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-primary hover:text-primary-hover bg-red-50 hover:bg-red-100 py-1.5 px-2.5 rounded-lg transition-colors border border-red-100 cursor-pointer shadow-3xs"
-                        >
-                          Warnings
-                        </button>
+                        <>
+                          <button
+                            onClick={() => {
+                              setSelectedEmployeeId(user.id);
+                              setNavigation("warning-form");
+                            }}
+                            className="w-full inline-flex items-center justify-center gap-1.5 text-[10px] font-black uppercase text-primary hover:text-primary-hover bg-red-50 hover:bg-red-100 py-2 px-3 rounded-lg transition-colors border border-red-100 cursor-pointer shadow-3xs"
+                          >
+                            <AlertTriangle size={12} />
+                            Issue Warning
+                          </button>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => handleBlockUser(user.id, (user as any).disabled || false)}
+                              disabled={actioningUserId === user.id}
+                              className="inline-flex items-center justify-center gap-1 text-[9px] font-black uppercase text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 py-1.5 px-2 rounded-lg transition-colors border border-amber-200 cursor-pointer disabled:opacity-50"
+                            >
+                              {actioningUserId === user.id ? "..." : (user as any).disabled ? "Unblock" : "Block"}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user.id, user.email)}
+                              disabled={actioningUserId === user.id}
+                              className="inline-flex items-center justify-center gap-1 text-[9px] font-black uppercase text-red-700 hover:text-red-900 bg-red-50 hover:bg-red-100 py-1.5 px-2 rounded-lg transition-colors border border-red-200 cursor-pointer disabled:opacity-50"
+                            >
+                              {actioningUserId === user.id ? "..." : "Delete"}
+                            </button>
+                          </div>
+                        </>
                       )}
                       <a 
                         href={`mailto:${user.email}`} 
-                        className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase text-zinc-700 hover:text-zinc-950 bg-zinc-105 hover:bg-zinc-200 py-1.5 px-3 rounded-lg transition-colors border border-zinc-200"
+                        className="w-full inline-flex items-center justify-center gap-1.5 text-[10px] font-black uppercase text-zinc-700 hover:text-zinc-950 bg-zinc-105 hover:bg-zinc-200 py-2 px-3 rounded-lg transition-colors border border-zinc-200"
                       >
                         <Mail size={12} />
                         Email
@@ -264,13 +323,7 @@ const PersonalWarnings: React.FC = () => {
 // 3. Main Page Shell
 // ==========================================
 export default function Home() {
-  const { currentScreen, activeTab, currentUser, setActiveTab, switchRole, logout, isLoading } = useApp();
-
-  const handleRoleToggle = () => {
-    if (!currentUser) return;
-    const nextRole = currentUser.role === "manager" ? "employee" : "manager";
-    switchRole(nextRole);
-  };
+  const { currentScreen, activeTab, currentUser, setActiveTab, logout, isLoading } = useApp();
 
   // Determine whether to display navigation indicators
   const isManager = currentUser?.role === "manager";
@@ -323,9 +376,12 @@ export default function Home() {
     );
   }
 
-  // Auth gate
+  // Auth gate with Firebase integration
   if (!currentUser) {
-    return <AuthScreen />;
+    return <FirebaseAuthScreen onAuthSuccess={async (userId) => {
+      // Firebase auth succeeded - user will be loaded by auth listener in context
+      console.log("Firebase auth successful for user:", userId);
+    }} />;
   }
 
   return (
@@ -408,7 +464,7 @@ export default function Home() {
           </button>
         </nav>
 
-        {/* Sidebar Footer User Card & Sandbox Controller */}
+        {/* Sidebar Footer User Card */}
         <div className="pt-4 border-t border-zinc-150 flex flex-col gap-3">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -428,15 +484,6 @@ export default function Home() {
               <LogOut size={15} />
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={handleRoleToggle}
-            className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 text-[9px] font-black uppercase tracking-wider border border-red-100 hover:border-red-200 bg-red-50/50 hover:bg-red-50 text-primary rounded-xl transition-all cursor-pointer shadow-3xs"
-          >
-            <UserCog size={12} />
-            Switch to {isManager ? "Employee" : "Manager"}
-          </button>
         </div>
       </aside>
 

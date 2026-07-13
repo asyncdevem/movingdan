@@ -17,8 +17,9 @@ export const AddEmployeeForm: React.FC = () => {
   const [startDate, setStartDate] = useState("");
   const [password, setPassword] = useState("");
   const [validationError, setValidationError] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!name.trim()) {
@@ -33,25 +34,48 @@ export const AddEmployeeForm: React.FC = () => {
       setValidationError("Start date is required.");
       return;
     }
-    if (!password || password.length < 4) {
-      setValidationError("Please enter an initial password (min 4 chars).");
+    if (!password || password.length < 6) {
+      setValidationError("Password must be at least 6 characters.");
       return;
     }
 
     setValidationError("");
+    setIsCreating(true);
     
-    // Call context action
-    addEmployee({
-      name,
-      email,
-      title,
-      role
-    });
+    try {
+      // Call context action to create employee (this will handle Firebase auth + Firestore)
+      await addEmployee({
+        name,
+        email,
+        title,
+        role,
+        password
+      });
 
-    setSuccess(true);
-    setTimeout(() => {
-      setNavigation("home");
-    }, 1500);
+      setSuccess(true);
+      setTimeout(() => {
+        setNavigation("home");
+      }, 1500);
+    } catch (err: any) {
+      // Enhanced error messages
+      let errorMessage = "Failed to create employee account";
+      
+      if (err.code === "auth/email-already-in-use") {
+        errorMessage = "This email is already registered. Please use a different email.";
+      } else if (err.code === "auth/invalid-email") {
+        errorMessage = "Invalid email address format.";
+      } else if (err.code === "auth/weak-password") {
+        errorMessage = "Password is too weak. Please use at least 6 characters.";
+      } else if (err.code === "auth/operation-not-allowed") {
+        errorMessage = "Email/password authentication is not enabled. Please contact support.";
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setValidationError(errorMessage);
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
@@ -231,9 +255,21 @@ export const AddEmployeeForm: React.FC = () => {
           {/* Submit Action */}
           <button
             type="submit"
-            className="w-full mt-4 bg-primary hover:bg-primary-hover active:scale-[0.99] text-white py-3.5 px-5 rounded-2xl shadow-md transition-all duration-200 font-black text-sm uppercase tracking-wider"
+            disabled={isCreating}
+            className={`w-full mt-4 py-3.5 px-5 rounded-2xl shadow-md transition-all duration-200 font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 ${
+              isCreating
+                ? "bg-zinc-400 text-zinc-200 cursor-not-allowed"
+                : "bg-primary hover:bg-primary-hover active:scale-[0.99] text-white"
+            }`}
           >
-            Create Crew Account
+            {isCreating ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Creating Account...
+              </>
+            ) : (
+              "Create Crew Account"
+            )}
           </button>
 
         </form>

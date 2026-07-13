@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isManager() {
+      return isSignedIn() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager';
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Anyone authenticated can read user profiles
+      allow read: if isSignedIn();
+      
+      // Users can only write their own profile
+      // Managers can write any profile (for onboarding)
+      allow write: if isOwner(userId) || isManager();
+    }
+    
+    // Policies collection
+    match /policies/{policyId} {
+      // Anyone authenticated can read policies
+      allow read: if isSignedIn();
+      
+      // Only managers can create/update/delete policies
+      allow write: if isManager();
+    }
+    
+    // Signatures collection
+    match /signatures/{signatureId} {
+      // Anyone authenticated can read signatures
+      allow read: if isSignedIn();
+      
+      // Users can create signatures (sign policies)
+      // Cannot update or delete signatures once created
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+    
+    // Warnings collection
+    match /warnings/{warningId} {
+      // Anyone authenticated can read warnings
+      allow read: if isSignedIn();
+      
+      // Only managers can create/update warnings
+      allow create, update: if isManager();
+      
+      // Warnings cannot be deleted (permanent record)
+      allow delete: if false;
+    }
+    
+    // Email queue collection (internal only)
+    match /emailQueue/{queueId} {
+      // Only Cloud Functions can access email queue
+      // Regular users and even managers cannot access this
+      allow read, write: if false;
+    }
+    
+    // Catch-all rule (deny everything else)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

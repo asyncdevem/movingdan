@@ -3,13 +3,24 @@
 import React, { useState } from "react";
 import { useApp } from "../context";
 import { ArrowLeft, BarChart3, AlertTriangle, FileText, CheckCircle2, XCircle, Download, Clock } from "lucide-react";
+import * as XLSX from 'xlsx';
 
 export const ReportsDashboard: React.FC = () => {
-  const { policies, signatures, warnings, users, setNavigation } = useApp();
+  const { policies, signatures, warnings, users, setNavigation, currentUser } = useApp();
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   // Filter out managers from compliance reports
   const movers = users.filter((u) => u.role === "employee");
+  
+  // Debug logging
+  console.log('=== REPORTS DASHBOARD DEBUG ===');
+  console.log('Total Users:', users.length);
+  console.log('Total Movers (Employees):', movers.length);
+  console.log('Total Policies:', policies.length);
+  console.log('Total Signatures:', signatures.length);
+  console.log('Movers:', movers);
+  console.log('Policies:', policies);
+  console.log('Signatures:', signatures);
   
   // Total compliance checks = total movers * total policies
   const totalChecks = movers.length * policies.length;
@@ -19,12 +30,16 @@ export const ReportsDashboard: React.FC = () => {
   );
   
   const signedChecks = moverSignatures.length;
-  const compliancePercentage = totalChecks > 0 ? Math.round((signedChecks / totalChecks) * 100) : 100;
+  const compliancePercentage = totalChecks > 0 ? Math.round((signedChecks / totalChecks) * 100) : 0;
+
+  console.log('Total Checks:', totalChecks);
+  console.log('Signed Checks:', signedChecks);
+  console.log('Compliance %:', compliancePercentage);
 
   // Calculate signature status per policy
   const policyStats = policies.map((policy) => {
     const signedCount = signatures.filter((s) => s.policyId === policy.id).length;
-    const rate = movers.length > 0 ? Math.round((signedCount / movers.length) * 100) : 100;
+    const rate = movers.length > 0 ? Math.round((signedCount / movers.length) * 100) : 0;
     return {
       ...policy,
       signedCount,
@@ -32,11 +47,122 @@ export const ReportsDashboard: React.FC = () => {
     };
   });
 
-  const handleDownload = () => {
-    setDownloadSuccess(true);
-    setTimeout(() => {
-      setDownloadSuccess(false);
-    }, 2000);
+  const handleExportExcel = () => {
+    try {
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: Overall Compliance Summary
+      const summaryData = [
+        ['DAN - THE MOVING MAN', '', '', ''],
+        ['Compliance Report', '', '', ''],
+        ['Generated:', new Date().toLocaleString()],
+        ['', '', '', ''],
+        ['OVERALL METRICS', '', '', ''],
+        ['Total Employees:', movers.length, '', ''],
+        ['Total Policies:', policies.length, '', ''],
+        ['Total Required Signatures:', totalChecks, '', ''],
+        ['Completed Signatures:', signedChecks, '', ''],
+        ['Compliance Rate:', `${compliancePercentage}%`, '', ''],
+        ['', '', '', ''],
+        ['POLICY BREAKDOWN', '', '', ''],
+        ['Policy Name', 'Signatures', 'Total Movers', 'Completion %'],
+      ];
+
+      policyStats.forEach(stat => {
+        summaryData.push([
+          stat.title,
+          stat.signedCount,
+          movers.length,
+          `${stat.rate}%`
+        ]);
+      });
+
+      const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
+
+      // Sheet 2: Employee Compliance Detail
+      const employeeData = [
+        ['Employee Name', 'Email', 'Title', 'Policies Signed', 'Total Policies', 'Compliance %', 'Warnings']
+      ];
+
+      movers.forEach(mover => {
+        const moverSigs = signatures.filter(s => s.employeeId === mover.id);
+        const moverWarnings = warnings.filter(w => w.employeeId === mover.id);
+        const compliance = policies.length > 0 ? Math.round((moverSigs.length / policies.length) * 100) : 0;
+        
+        employeeData.push([
+          mover.name,
+          mover.email,
+          mover.title,
+          moverSigs.length,
+          policies.length,
+          `${compliance}%`,
+          moverWarnings.length
+        ]);
+      });
+
+      const ws2 = XLSX.utils.aoa_to_sheet(employeeData);
+      XLSX.utils.book_append_sheet(wb, ws2, 'Employee Details');
+
+      // Sheet 3: Warnings Log
+      const warningsData = [
+        ['Date', 'Employee', 'Warning Type', 'Severity', 'Cost', 'Incident Details', 'Issued By', 'Status']
+      ];
+
+      warnings.forEach(warning => {
+        warningsData.push([
+          warning.date,
+          warning.employeeName,
+          warning.warningType,
+          warning.severity,
+          `$${warning.cost}`,
+          warning.incidentDetails || warning.details,
+          warning.issuedBy,
+          warning.status
+        ]);
+      });
+
+      const ws3 = XLSX.utils.aoa_to_sheet(warningsData);
+      XLSX.utils.book_append_sheet(wb, ws3, 'Warnings');
+
+      // Sheet 4: Policy Signatures
+      const signaturesData = [
+        ['Employee Name', 'Policy Name', 'Signed Date', 'Email']
+      ];
+
+      signatures.forEach(sig => {
+        const employee = users.find(u => u.id === sig.employeeId);
+        const policy = policies.find(p => p.id === sig.policyId);
+        
+        if (employee && policy) {
+          signaturesData.push([
+            employee.name,
+            policy.title,
+            new Date(sig.signedAt).toLocaleString(),
+            employee.email
+          ]);
+        }
+      });
+
+      const ws4 = XLSX.utils.aoa_to_sheet(signaturesData);
+      XLSX.utils.book_append_sheet(wb, ws4, 'Signatures');
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `Compliance_Report_${timestamp}.xlsx`;
+
+      // Write file
+      XLSX.writeFile(wb, filename);
+
+      setDownloadSuccess(true);
+      setTimeout(() => {
+        setDownloadSuccess(false);
+      }, 3000);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Failed to export report. Check console for details.');
+    }
   };
 
   return (
@@ -54,7 +180,7 @@ export const ReportsDashboard: React.FC = () => {
           <h2 className="text-base font-extrabold text-zinc-900">Compliance Reports</h2>
         </div>
         <button 
-          onClick={handleDownload}
+          onClick={handleExportExcel}
           className="flex items-center gap-1 bg-red-50 hover:bg-red-100 text-primary border border-red-100 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors active:scale-95"
         >
           <Download size={12} />
@@ -68,7 +194,7 @@ export const ReportsDashboard: React.FC = () => {
         
         {downloadSuccess && (
           <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs font-bold rounded-xl p-3 text-center">
-            CSV Compliance Report exported successfully! Check downloads.
+            Excel Compliance Report exported successfully! Check downloads.
           </div>
         )}
 
@@ -85,20 +211,28 @@ export const ReportsDashboard: React.FC = () => {
               <p className="text-[11px] text-zinc-400 font-semibold mt-1">Corporate policy signature compliance</p>
             </div>
             
-            <div className="w-16 h-16 rounded-full border-4 border-zinc-850 flex items-center justify-center font-black text-sm relative">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center font-black text-sm relative">
               {/* Radial Progress Outline */}
-              <svg className="w-full h-full transform -rotate-90 absolute inset-0">
+              <svg className="w-full h-full transform -rotate-90 absolute inset-0" viewBox="0 0 64 64">
                 <circle
                   cx="32"
                   cy="32"
-                  r="26"
+                  r="28"
+                  className="stroke-zinc-700 fill-none"
+                  strokeWidth="4"
+                />
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="28"
                   className="stroke-red-500 fill-none"
                   strokeWidth="4"
-                  strokeDasharray="163"
-                  strokeDashoffset={163 - (163 * compliancePercentage) / 100}
+                  strokeDasharray={`${2 * Math.PI * 28}`}
+                  strokeDashoffset={`${2 * Math.PI * 28 * (1 - compliancePercentage / 100)}`}
+                  strokeLinecap="round"
                 />
               </svg>
-              <span className="text-xs text-zinc-200">{signedChecks}/{totalChecks}</span>
+              <span className="text-xs text-zinc-200 relative z-10">{signedChecks}/{totalChecks}</span>
             </div>
           </div>
         </div>

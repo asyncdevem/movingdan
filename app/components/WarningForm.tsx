@@ -28,6 +28,12 @@ export const WarningForm: React.FC = () => {
   // 7. Warning Saved (Success Screen)
   // 8. Employee Warnings (History list)
   const [step, setStep] = useState<number>(1);
+  const [stepError, setStepError] = useState("");
+
+  const goToStep = (nextStep: number) => {
+    setStepError("");
+    setStep(nextStep);
+  };
 
   // Form selections
   const [targetEmployee, setTargetEmployee] = useState<User | null>(null);
@@ -59,7 +65,7 @@ export const WarningForm: React.FC = () => {
       const emp = users.find((u) => u.id === selectedEmployeeId);
       if (emp) {
         setTargetEmployee(emp);
-        setStep(8); // Go straight to warnings history for that employee
+        goToStep(8); // Go straight to warnings history for that employee
       }
     }
   }, [selectedEmployeeId, users]);
@@ -222,7 +228,7 @@ export const WarningForm: React.FC = () => {
     setHasDrawn(false);
 
     // Go to Step 7
-    setStep(7);
+    goToStep(7);
   };
 
   const handleBack = () => {
@@ -230,7 +236,7 @@ export const WarningForm: React.FC = () => {
       setSelectedEmployeeId(null);
       setNavigation("home");
     } else if (step > 1) {
-      setStep(step - 1);
+      goToStep(step - 1);
     } else {
       setNavigation("home");
     }
@@ -250,7 +256,7 @@ export const WarningForm: React.FC = () => {
     setDamageCost("750.00");
     setAdditionalNotes("");
     setPhotos([]);
-    setStep(2);
+    goToStep(2);
   };
 
   // Step names helper
@@ -305,7 +311,7 @@ export const WarningForm: React.FC = () => {
 
       {/* Main Workspace (Scrollable) */}
       <div className="flex-1 overflow-y-auto bg-zinc-50 py-6 px-4 flex flex-col items-center">
-        <div className="w-full max-w-md bg-white border border-zinc-200 rounded-3xl shadow-xs overflow-hidden flex flex-col justify-between my-2">
+        <div className="w-full max-w-md bg-white border border-zinc-200 rounded-3xl shadow-xs flex flex-col justify-between my-2">
           
           {/* STEP 1: SELECT EMPLOYEE */}
           {step === 1 && (
@@ -315,9 +321,16 @@ export const WarningForm: React.FC = () => {
                 <p className="text-[11px] font-semibold text-zinc-550 mt-0.5">Choose the employee to issue a written warning</p>
               </div>
 
+              {/* Validation alert box */}
+              {stepError && (
+                <div className="bg-red-50 border border-red-200 text-primary text-xs font-bold rounded-xl p-3.5">
+                  {stepError}
+                </div>
+              )}
+
               {/* Custom Search Input */}
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-zinc-450">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-zinc-455">
                   <Search size={15} />
                 </span>
                 <input
@@ -358,7 +371,7 @@ export const WarningForm: React.FC = () => {
                         key={m.id}
                         onClick={() => {
                           setTargetEmployee(m);
-                          setStep(2);
+                          goToStep(2);
                         }}
                         className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
                           targetEmployee?.id === m.id
@@ -371,7 +384,7 @@ export const WarningForm: React.FC = () => {
                             {m.avatar}
                           </div>
                           <div>
-                            <p className="text-xs font-black text-zinc-850">{m.name}</p>
+                            <p className="text-xs font-black text-zinc-855">{m.name}</p>
                             <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mt-0.5">{m.title}</p>
                           </div>
                         </div>
@@ -383,13 +396,14 @@ export const WarningForm: React.FC = () => {
 
               {/* Footer navigation */}
               <button
-                disabled={!targetEmployee}
-                onClick={() => setStep(2)}
-                className={`w-full py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider text-center transition-all ${
-                  targetEmployee
-                    ? "bg-primary hover:bg-primary-hover text-white cursor-pointer shadow-md"
-                    : "bg-zinc-105 text-zinc-400 border border-zinc-200 cursor-not-allowed"
-                }`}
+                onClick={() => {
+                  if (!targetEmployee) {
+                    setStepError("Please select an employee before continuing.");
+                    return;
+                  }
+                  goToStep(2);
+                }}
+                className="w-full py-3.5 bg-primary hover:bg-primary-hover text-white rounded-2xl text-xs font-black uppercase tracking-wider text-center transition-all shadow-md cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
               >
                 Next
               </button>
@@ -401,7 +415,7 @@ export const WarningForm: React.FC = () => {
             <div className="p-5 flex flex-col gap-5">
               <div className="text-center">
                 <h3 className="text-base font-black text-zinc-800 uppercase tracking-tight">Select Date & Time</h3>
-                <p className="text-[11px] font-semibold text-zinc-550 mt-0.5">Specify when the infraction occurred</p>
+                <p className="text-[11px] font-semibold text-zinc-555 mt-0.5">Specify when the infraction occurred</p>
               </div>
 
               {/* Selected Employee Info */}
@@ -510,8 +524,8 @@ export const WarningForm: React.FC = () => {
 
               {/* Next Button */}
               <button
-                onClick={() => setStep(3)}
-                className="w-full py-3.5 bg-primary hover:bg-primary-hover text-white rounded-2xl text-xs font-black uppercase tracking-wider text-center transition-all shadow-md cursor-pointer"
+                onClick={() => goToStep(3)}
+                className="w-full py-3.5 bg-primary hover:bg-primary-hover text-white rounded-2xl text-xs font-black uppercase tracking-wider text-center transition-all shadow-md cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
               >
                 Next
               </button>
@@ -525,6 +539,13 @@ export const WarningForm: React.FC = () => {
                 <h3 className="text-base font-black text-zinc-800 uppercase tracking-tight">Select Warning Type</h3>
                 <p className="text-[11px] font-semibold text-zinc-550 mt-0.5">Categorize the infraction notice</p>
               </div>
+
+              {/* Validation alert box */}
+              {stepError && (
+                <div className="bg-red-50 border border-red-200 text-primary text-xs font-bold rounded-xl p-3.5">
+                  {stepError}
+                </div>
+              )}
 
               {/* Small Header Summary */}
               <div className="border border-zinc-150 rounded-2xl p-3 bg-zinc-50 flex items-center justify-between text-[11px] font-bold text-zinc-600">
@@ -540,7 +561,10 @@ export const WarningForm: React.FC = () => {
                   return (
                     <button
                       key={item.type}
-                      onClick={() => setWarningType(item.type)}
+                      onClick={() => {
+                        setWarningType(item.type);
+                        setStepError("");
+                      }}
                       className={`flex items-start gap-3.5 p-3.5 rounded-2xl border text-left transition-all ${
                         isSelected
                           ? "bg-red-50/70 border-primary/30 ring-1 ring-primary/20"
@@ -564,8 +588,11 @@ export const WarningForm: React.FC = () => {
 
               {/* Next Button */}
               <button
-                disabled={!warningType}
                 onClick={() => {
+                  if (!warningType) {
+                    setStepError("Please select a warning type before continuing.");
+                    return;
+                  }
                   // Pre-populate default costs
                   const chosen = warningTypes.find((t) => t.type === warningType);
                   if (chosen && chosen.defaultCost !== "Custom Amount") {
@@ -573,13 +600,9 @@ export const WarningForm: React.FC = () => {
                   } else {
                     setDamageCost("750.00");
                   }
-                  setStep(4);
+                  goToStep(4);
                 }}
-                className={`w-full py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider text-center transition-all ${
-                  warningType
-                    ? "bg-primary hover:bg-primary-hover text-white cursor-pointer shadow-md"
-                    : "bg-zinc-100 text-zinc-400 border border-zinc-200 cursor-not-allowed"
-                }`}
+                className="w-full py-3.5 bg-primary hover:bg-primary-hover text-white rounded-2xl text-xs font-black uppercase tracking-wider text-center transition-all shadow-md cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
               >
                 Next
               </button>
@@ -593,6 +616,13 @@ export const WarningForm: React.FC = () => {
                 <h3 className="text-base font-black text-zinc-800 uppercase tracking-tight">{warningType} Details</h3>
                 <p className="text-[11px] font-semibold text-zinc-550 mt-0.5">Provide detailed notes and associated costs</p>
               </div>
+
+              {/* Validation alert box */}
+              {stepError && (
+                <div className="bg-red-50 border border-red-200 text-primary text-xs font-bold rounded-xl p-3.5">
+                  {stepError}
+                </div>
+              )}
 
               {/* Banner summary */}
               <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-start gap-3">
@@ -609,48 +639,54 @@ export const WarningForm: React.FC = () => {
 
               {/* Incident Details Input */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-black uppercase text-zinc-550 tracking-wider">Moving Accident / Incident Details</label>
+                <label className="text-[10px] font-black uppercase text-zinc-555 tracking-wider">Moving Accident / Incident Details</label>
                 <textarea
                   rows={3}
                   value={incidentDetails}
-                  onChange={(e) => setIncidentDetails(e.target.value)}
+                  onChange={(e) => {
+                    setIncidentDetails(e.target.value);
+                    if (e.target.value.trim()) setStepError("");
+                  }}
                   placeholder="e.g. Backed into client's fence while exiting driveway."
                   className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-2xl p-3 text-xs font-semibold text-zinc-800 placeholder-zinc-400 outline-none resize-none"
                 />
               </div>
 
-              {/* Damage Date Picker */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-black uppercase text-zinc-550 tracking-wider">Damage Date</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-450 pointer-events-none">
-                    <Calendar size={14} />
-                  </span>
-                  <input
-                    type="date"
-                    value={warningDate}
-                    onChange={(e) => setWarningDate(e.target.value)}
-                    className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-2xl py-2.5 pl-9 pr-4 text-xs font-semibold text-zinc-800 outline-none"
-                  />
-                </div>
-              </div>
+              {/* Damage Date Picker & Cost Input - Only visible for Damage type warnings */}
+              {warningType === "Damage" && (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-black uppercase text-zinc-550 tracking-wider">Damage Date</label>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-455 pointer-events-none">
+                        <Calendar size={14} />
+                      </span>
+                      <input
+                        type="date"
+                        value={warningDate}
+                        onChange={(e) => setWarningDate(e.target.value)}
+                        className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-2xl py-2.5 pl-9 pr-4 text-xs font-semibold text-zinc-800 outline-none"
+                      />
+                    </div>
+                  </div>
 
-              {/* Damage Cost Input */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-black uppercase text-zinc-555 tracking-wider">Damage Cost ($)</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-4 font-bold text-zinc-700 text-xs pointer-events-none">
-                    $
-                  </span>
-                  <input
-                    type="text"
-                    value={damageCost}
-                    onChange={(e) => setDamageCost(e.target.value)}
-                    placeholder="750.00"
-                    className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-2xl py-3 pl-8 pr-4 text-xs font-bold text-zinc-800 outline-none"
-                  />
-                </div>
-              </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-black uppercase text-zinc-555 tracking-wider">Damage Cost ($)</label>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 flex items-center pl-4 font-bold text-zinc-700 text-xs pointer-events-none">
+                        $
+                      </span>
+                      <input
+                        type="text"
+                        value={damageCost}
+                        onChange={(e) => setDamageCost(e.target.value)}
+                        placeholder="750.00"
+                        className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-2xl py-3 pl-8 pr-4 text-xs font-bold text-zinc-800 outline-none"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Additional Notes (Optional) */}
               <div className="flex flex-col gap-1.5">
@@ -675,8 +711,8 @@ export const WarningForm: React.FC = () => {
                       onClick={() => setSeverity(level)}
                       className={`py-2 rounded-xl text-[10px] font-black uppercase border transition-all text-center ${
                         severity === level
-                          ? "bg-zinc-905 border-zinc-900 text-white shadow-xs"
-                          : "bg-white border-zinc-200 text-zinc-655 hover:bg-zinc-55"
+                          ? "bg-zinc-900 border-zinc-900 text-white shadow-xs"
+                          : "bg-white border-zinc-200 text-zinc-650 hover:bg-zinc-50"
                       } cursor-pointer`}
                     >
                       {level}
@@ -687,13 +723,14 @@ export const WarningForm: React.FC = () => {
 
               {/* Next Button */}
               <button
-                disabled={!incidentDetails.trim()}
-                onClick={() => setStep(5)}
-                className={`w-full py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider text-center transition-all ${
-                  incidentDetails.trim()
-                    ? "bg-primary hover:bg-primary-hover text-white cursor-pointer shadow-md"
-                    : "bg-zinc-100 text-zinc-400 border border-zinc-200 cursor-not-allowed"
-                }`}
+                onClick={() => {
+                  if (!incidentDetails.trim()) {
+                    setStepError("Please provide incident details before continuing.");
+                    return;
+                  }
+                  goToStep(5);
+                }}
+                className="w-full py-3.5 bg-primary hover:bg-primary-hover text-white rounded-2xl text-xs font-black uppercase tracking-wider text-center transition-all shadow-md cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
               >
                 Next
               </button>
@@ -763,8 +800,8 @@ export const WarningForm: React.FC = () => {
 
               {/* Next Button */}
               <button
-                onClick={() => setStep(6)}
-                className="w-full py-3.5 bg-primary hover:bg-primary-hover text-white rounded-2xl text-xs font-black uppercase tracking-wider text-center transition-all shadow-md cursor-pointer"
+                onClick={() => goToStep(6)}
+                className="w-full py-3.5 bg-primary hover:bg-primary-hover text-white rounded-2xl text-xs font-black uppercase tracking-wider text-center transition-all shadow-md cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
               >
                 Next
               </button>
@@ -776,7 +813,7 @@ export const WarningForm: React.FC = () => {
             <div className="p-5 flex flex-col gap-5">
               <div className="text-center">
                 <h3 className="text-base font-black text-zinc-800 uppercase tracking-tight">Review Warning</h3>
-                <p className="text-[11px] font-semibold text-zinc-550 mt-0.5">Confirm details and submit signature</p>
+                <p className="text-[11px] font-semibold text-zinc-555 mt-0.5">Confirm details and submit signature</p>
               </div>
 
               {/* Summary Card */}
@@ -785,7 +822,7 @@ export const WarningForm: React.FC = () => {
                 <div className="grid grid-cols-2 gap-3 text-xs leading-normal font-semibold">
                   <div>
                     <span className="block text-[9px] font-black uppercase text-zinc-400">Employee</span>
-                    <span className="text-zinc-850 font-bold">{targetEmployee.name}</span>
+                    <span className="text-zinc-855 font-bold">{targetEmployee.name}</span>
                   </div>
                   <div>
                     <span className="block text-[9px] font-black uppercase text-zinc-400">Date & Time</span>
@@ -808,16 +845,18 @@ export const WarningForm: React.FC = () => {
                     <span className="block text-[9px] font-black uppercase text-zinc-400">Moving Accident / Incident</span>
                     <p className="text-zinc-700 font-medium leading-relaxed bg-zinc-50 p-2.5 border border-zinc-150 rounded-xl mt-0.5">{incidentDetails}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <span className="block text-[9px] font-black uppercase text-zinc-400">Damage Date</span>
-                      <span className="text-zinc-800 font-bold">{warningDate}</span>
+                  {warningType === "Damage" && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="block text-[9px] font-black uppercase text-zinc-400">Damage Date</span>
+                        <span className="text-zinc-800 font-bold">{warningDate}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[9px] font-black uppercase text-zinc-400">Damage Cost</span>
+                        <span className="text-zinc-805 font-black">${damageCost}</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="block text-[9px] font-black uppercase text-zinc-400">Damage Cost</span>
-                      <span className="text-zinc-805 font-black">${damageCost}</span>
-                    </div>
-                  </div>
+                  )}
                   {additionalNotes && (
                     <div>
                       <span className="block text-[9px] font-black uppercase text-zinc-400">Additional Notes</span>
@@ -863,7 +902,7 @@ export const WarningForm: React.FC = () => {
                     />
                     <div className="absolute bottom-2.5 left-3.5 right-3.5 border-b border-zinc-300 pointer-events-none flex justify-between text-[7px] text-zinc-400 font-bold uppercase tracking-widest">
                       <span>X</span>
-                      <span>Dan Stevens (Manager Signature)</span>
+                      <span>{currentUser?.name || 'Manager'} (Manager Signature)</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-2">
@@ -873,7 +912,7 @@ export const WarningForm: React.FC = () => {
                       disabled={!hasDrawn}
                       className={`flex items-center gap-1 text-[9px] font-bold py-1 px-2.5 rounded-lg border transition-all ${
                         hasDrawn
-                          ? "text-zinc-700 bg-white hover:bg-zinc-50 border-zinc-250 cursor-pointer"
+                          ? "text-zinc-700 bg-white hover:bg-zinc-55 border-zinc-250 cursor-pointer"
                           : "text-zinc-350 bg-zinc-50 border-zinc-200 cursor-not-allowed"
                       }`}
                     >
@@ -916,7 +955,7 @@ export const WarningForm: React.FC = () => {
                 <p className="text-xs font-bold text-zinc-800 leading-normal">
                   Written warning has been saved successfully.
                 </p>
-                <div className="bg-zinc-50 border border-zinc-150 rounded-xl py-2 px-4 inline-block mx-auto mt-2">
+                <div className="bg-zinc-50 border border-zinc-155 rounded-xl py-2 px-4 inline-block mx-auto mt-2">
                   <span className="block text-[8px] font-black uppercase text-zinc-450 tracking-wider">Warning ID</span>
                   <span className="text-xs font-black text-zinc-800 font-mono tracking-wider">
                     {generatedWarningId}
@@ -928,7 +967,7 @@ export const WarningForm: React.FC = () => {
               <div className="w-full flex flex-col gap-2 mt-4 pb-2">
                 <button
                   onClick={() => {
-                    setStep(8);
+                    goToStep(8);
                   }}
                   className="w-full py-3.5 bg-primary hover:bg-primary-hover text-white rounded-2xl text-xs font-black uppercase tracking-wider text-center transition-all shadow-md cursor-pointer"
                 >
@@ -956,9 +995,9 @@ export const WarningForm: React.FC = () => {
                 <button
                   onClick={() => {
                     setSelectedEmployeeId(null);
-                    setStep(1);
+                    goToStep(1);
                   }}
-                  className="p-1 text-zinc-550 hover:text-zinc-800 font-black text-xs uppercase flex items-center gap-1.5"
+                  className="p-1 text-zinc-555 hover:text-zinc-800 font-black text-xs uppercase flex items-center gap-1.5"
                 >
                   <ArrowLeft size={14} />
                   <span>{targetEmployee.name}</span>
@@ -1043,7 +1082,7 @@ export const WarningForm: React.FC = () => {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-16 text-center">
                     <CheckCircle className="text-emerald-500 mb-2.5 stroke-[1.5]" size={36} />
-                    <p className="text-xs font-black text-zinc-800">Clear Compliance Record</p>
+                    <p className="text-xs font-black text-zinc-805">Clear Compliance Record</p>
                     <p className="text-[10px] text-zinc-400 mt-0.5 leading-normal max-w-[200px]">
                       This employee has no warning infractions registered under this filter.
                     </p>
@@ -1075,14 +1114,14 @@ export const WarningForm: React.FC = () => {
             
             <div className="h-14 bg-white border-b border-zinc-200 px-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <h3 className="text-xs font-black uppercase text-zinc-800">Warning Reference</h3>
+                <h3 className="text-xs font-black uppercase text-zinc-805">Warning Reference</h3>
                 <span className="bg-zinc-105 text-zinc-850 px-2.5 py-0.5 rounded-lg text-[9px] font-mono tracking-wider font-bold">
                   {selectedHistoryWarning.id}
                 </span>
               </div>
               <button 
                 onClick={() => setSelectedHistoryWarning(null)}
-                className="p-1 rounded-lg hover:bg-zinc-100 transition-colors text-zinc-400 hover:text-zinc-650 cursor-pointer"
+                className="p-1 rounded-lg hover:bg-zinc-100 transition-colors text-zinc-450 hover:text-zinc-650 cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -1111,7 +1150,7 @@ export const WarningForm: React.FC = () => {
                     <span className="text-zinc-855 font-bold">{selectedHistoryWarning.date}</span>
                   </div>
                   <div>
-                    <span className="block text-[8px] font-black uppercase text-zinc-450">Financial Impact</span>
+                    <span className="block text-[8px] font-black uppercase text-zinc-455">Financial Impact</span>
                     <span className="text-zinc-855 font-black">${selectedHistoryWarning.cost.toFixed(2)}</span>
                   </div>
                 </div>
@@ -1181,7 +1220,7 @@ export const WarningForm: React.FC = () => {
                   }}
                   className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center text-white ${
                     selectedHistoryWarning.status === "Active"
-                      ? "bg-emerald-650 hover:bg-emerald-600 shadow-md"
+                      ? "bg-emerald-655 hover:bg-emerald-600 shadow-md"
                       : "bg-zinc-800 hover:bg-zinc-750 shadow-md"
                   }`}
                 >
