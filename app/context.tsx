@@ -6,6 +6,7 @@ import {
   db, 
   onAuthStateChanged,
   getUserProfile,
+  updateUserProfile,
   getAllUsers,
   getAllPolicies,
   getEmployeeSignatures,
@@ -483,7 +484,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
           // Load signatures - managers get ALL signatures, employees get only their own
           if (userProfile) {
-            const isManager = userProfile.role === "manager";
+            const isManager = (userProfile as any).role === "manager";
             const signaturesData = isManager 
               ? await getAllSignatures()
               : await getEmployeeSignatures(user.uid);
