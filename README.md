@@ -1,6 +1,6 @@
 # DAN - The Moving Man 🚚
 
-A comprehensive workforce management and compliance application for moving companies, built with Next.js, Firebase, and TypeScript.
+A comprehensive workforce management and compliance application for moving companies.
 
 ## 🎯 Features
 
