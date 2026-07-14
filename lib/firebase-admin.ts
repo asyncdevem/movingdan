@@ -23,11 +23,23 @@ try {
       throw new Error('Firebase Admin credentials not configured');
     }
 
+    // Clean and format the private key properly
+    // Remove any quotes and ensure proper line breaks
+    let formattedKey = privateKey
+      .replace(/\\n/g, '\n')  // Replace literal \n with actual newlines
+      .replace(/^["']|["']$/g, ''); // Remove surrounding quotes if any
+
+    // Ensure it has proper BEGIN/END markers
+    if (!formattedKey.includes('BEGIN PRIVATE KEY')) {
+      console.error('Private key does not contain BEGIN PRIVATE KEY marker');
+      throw new Error('Invalid private key format');
+    }
+
     app = initializeApp({
       credential: cert({
         projectId,
         clientEmail,
-        privateKey: privateKey.replace(/\\n/g, '\n'),
+        privateKey: formattedKey,
       }),
     });
     
