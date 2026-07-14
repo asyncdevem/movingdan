@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import type { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,12 +24,12 @@ export async function POST(request: NextRequest) {
         .get(),
     ]);
 
-    const policies = policiesSnapshot.docs.map((doc) => ({
+    const policies = policiesSnapshot.docs.map((doc: QueryDocumentSnapshot) => ({
       id: doc.id,
       ...doc.data(),
     }));
 
-    const signatures = signaturesSnapshot.docs.map((doc) => {
+    const signatures = signaturesSnapshot.docs.map((doc: QueryDocumentSnapshot) => {
       const data = doc.data();
       return {
         id: doc.id,
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    const warnings = warningsSnapshot.docs.map((doc) => ({
+    const warnings = warningsSnapshot.docs.map((doc: QueryDocumentSnapshot) => ({
       id: doc.id,
       ...doc.data(),
     }));

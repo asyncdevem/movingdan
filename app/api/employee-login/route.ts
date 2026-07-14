@@ -13,6 +13,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if Firebase Admin is initialized
+    if (!adminDb) {
+      console.error('Firebase Admin not initialized - check environment variables');
+      return NextResponse.json(
+        { error: 'Server configuration error. Please contact administrator.' },
+        { status: 500 }
+      );
+    }
+
     // Normalize phone number (remove all non-digit characters)
     const normalizedPhone = phone.replace(/\D/g, '');
     

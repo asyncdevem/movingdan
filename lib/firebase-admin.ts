@@ -3,27 +3,47 @@ import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
-let app: App;
+let app: App | null = null;
+let adminAuth: any = null;
+let adminDb: any = null;
 
 // Initialize Firebase Admin SDK
-if (getApps().length === 0) {
-  try {
+try {
+  if (getApps().length === 0) {
+    const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
+
+    if (!projectId || !clientEmail || !privateKey) {
+      console.error('Missing Firebase Admin environment variables:', {
+        hasProjectId: !!projectId,
+        hasClientEmail: !!clientEmail,
+        hasPrivateKey: !!privateKey,
+      });
+      throw new Error('Firebase Admin credentials not configured');
+    }
+
     app = initializeApp({
       credential: cert({
-        projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        projectId,
+        clientEmail,
+        privateKey: privateKey.replace(/\\n/g, '\n'),
       }),
     });
+    
+    adminAuth = getAuth(app);
+    adminDb = getFirestore(app);
+    
     console.log('Firebase Admin initialized successfully');
-  } catch (error) {
-    console.error('Firebase Admin initialization error:', error);
-    throw error;
+  } else {
+    app = getApps()[0];
+    adminAuth = getAuth(app);
+    adminDb = getFirestore(app);
   }
-} else {
-  app = getApps()[0];
+} catch (error) {
+  console.error('Firebase Admin initialization error:', error);
+  // Don't throw - let API routes handle the error
 }
 
-export const adminAuth = getAuth(app);
-export const adminDb = getFirestore(app);
+export { adminAuth, adminDb };
 export default admin;
