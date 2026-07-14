@@ -1,9 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['firebase-admin'],
-  },
+  // No special configuration needed - using Firestore REST API instead of Firebase Admin SDK
 };
 
 export default nextConfig;

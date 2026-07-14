@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
-import type { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,37 +11,89 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Load policies, signatures, and warnings for employee
-    const [policiesSnapshot, signaturesSnapshot, warningsSnapshot] = await Promise.all([
-      adminDb.collection('policies').get(),
-      adminDb.collection('signatures')
-        .where('employeeId', '==', employeeId)
-        .get(),
-      adminDb.collection('warnings')
-        .where('employeeId', '==', employeeId)
-        .get(),
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+    if (!projectId) {
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
+    // Fetch data using Firestore REST API
+    const baseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
+    
+    const [policiesRes, signaturesRes, warningsRes] = await Promise.all([
+      fetch(`${baseUrl}:runQuery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          structuredQuery: {
+            from: [{ collectionId: 'policies' }]
+          }
+        })
+      }),
+      fetch(`${baseUrl}:runQuery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          structuredQuery: {
+            from: [{ collectionId: 'signatures' }],
+            where: {
+              fieldFilter: {
+                field: { fieldPath: 'employeeId' },
+                op: 'EQUAL',
+                value: { stringValue: employeeId }
+              }
+            }
+          }
+        })
+      }),
+      fetch(`${baseUrl}:runQuery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          structuredQuery: {
+            from: [{ collectionId: 'warnings' }],
+            where: {
+              fieldFilter: {
+                field: { fieldPath: 'employeeId' },
+                op: 'EQUAL',
+                value: { stringValue: employeeId }
+              }
+            }
+          }
+        })
+      }),
     ]);
 
-    const policies = policiesSnapshot.docs.map((doc: QueryDocumentSnapshot) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const parseDocs = (results: any[]) => {
+      return results
+        .filter(r => r.document)
+        .map(r => {
+          const fields = r.document.fields;
+          const docId = r.document.name.split('/').pop();
+          const data: any = { id: docId };
+          
+          for (const [key, value] of Object.entries(fields)) {
+            const field = value as any;
+            if (field.stringValue !== undefined) data[key] = field.stringValue;
+            else if (field.integerValue !== undefined) data[key] = parseInt(field.integerValue);
+            else if (field.doubleValue !== undefined) data[key] = field.doubleValue;
+            else if (field.booleanValue !== undefined) data[key] = field.booleanValue;
+            else if (field.timestampValue !== undefined) data[key] = field.timestampValue;
+            else if (field.arrayValue !== undefined) {
+              data[key] = field.arrayValue.values?.map((v: any) => v.stringValue || v) || [];
+            }
+          }
+          
+          return data;
+        });
+    };
 
-    const signatures = signaturesSnapshot.docs.map((doc: QueryDocumentSnapshot) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        policyId: data.policyId,
-        employeeId: data.employeeId,
-        signatureData: data.signatureData,
-        signedAt: data.signedAt?.toDate ? data.signedAt.toDate().toISOString() : new Date().toISOString(),
-      };
-    });
-
-    const warnings = warningsSnapshot.docs.map((doc: QueryDocumentSnapshot) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const policies = parseDocs(await policiesRes.json());
+    const signatures = parseDocs(await signaturesRes.json());
+    const warnings = parseDocs(await warningsRes.json());
 
     return NextResponse.json({
       success: true,

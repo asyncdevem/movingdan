@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
-import type { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
+// Simple API route without Firebase Admin - query Firestore via REST API
 export async function POST(request: NextRequest) {
   try {
     const { phone, password } = await request.json();
@@ -13,51 +12,87 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if Firebase Admin is initialized
-    if (!adminDb) {
-      console.error('Firebase Admin not initialized - check environment variables');
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+
+    if (!projectId || !apiKey) {
+      console.error('Firebase config missing');
       return NextResponse.json(
-        { error: 'Server configuration error. Please contact administrator.' },
+        { error: 'Server configuration error' },
         { status: 500 }
       );
     }
 
-    // Normalize phone number (remove all non-digit characters)
+    // Normalize phone number
     const normalizedPhone = phone.replace(/\D/g, '');
     
     console.log('Employee login attempt:', {
       inputPhone: phone,
       normalizedPhone,
-      passwordLength: password.length,
     });
 
-    // Query Firestore for employee with matching phone
-    const usersRef = adminDb.collection('users');
-    const snapshot = await usersRef
-      .where('role', '==', 'employee')
-      .get();
+    // Query Firestore using REST API
+    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
+    
+    const queryResponse = await fetch(firestoreUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: 'users' }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: 'role' },
+              op: 'EQUAL',
+              value: { stringValue: 'employee' }
+            }
+          }
+        }
+      })
+    });
 
-    console.log(`Found ${snapshot.size} employees in database`);
+    if (!queryResponse.ok) {
+      console.error('Firestore query failed:', queryResponse.status);
+      return NextResponse.json(
+        { error: 'Database query failed' },
+        { status: 500 }
+      );
+    }
+
+    const results = await queryResponse.json();
+    console.log('Query returned:', results.length || 0, 'employees');
 
     // Find matching employee
     let matchingEmployee: any = null;
-    let foundPhones: string[] = [];
     
-    snapshot.forEach((doc: QueryDocumentSnapshot) => {
-      const data = doc.data();
-      const userPhone = (data.phone || '').replace(/\D/g, '');
-      foundPhones.push(userPhone);
-      
-      if (userPhone === normalizedPhone && data.password === password) {
-        matchingEmployee = {
-          id: doc.id,
-          ...data,
-        };
+    if (results && Array.isArray(results)) {
+      for (const result of results) {
+        if (result.document && result.document.fields) {
+          const fields = result.document.fields;
+          const userPhone = (fields.phone?.stringValue || '').replace(/\D/g, '');
+          const userPassword = fields.password?.stringValue;
+          
+          if (userPhone === normalizedPhone && userPassword === password) {
+            // Extract document ID from name
+            const docPath = result.document.name;
+            const docId = docPath.split('/').pop();
+            
+            matchingEmployee = {
+              id: docId,
+              name: fields.name?.stringValue || '',
+              email: fields.email?.stringValue || '',
+              phone: fields.phone?.stringValue || '',
+              role: fields.role?.stringValue || 'employee',
+              title: fields.title?.stringValue || '',
+              avatar: fields.avatar?.stringValue || '',
+            };
+            break;
+          }
+        }
       }
-    });
-
-    console.log('Phone numbers in database:', foundPhones);
-    console.log('Match found:', !!matchingEmployee);
+    }
 
     if (!matchingEmployee) {
       return NextResponse.json(
@@ -66,12 +101,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Remove password from response
-    const { password: _, ...employeeData } = matchingEmployee;
-
     return NextResponse.json({
       success: true,
-      employee: employeeData,
+      employee: matchingEmployee,
     });
   } catch (error: any) {
     console.error('Employee login error:', error);
