@@ -462,6 +462,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
+    // Firebase mode - Check for employee session in localStorage first
+    const employeeSession = localStorage.getItem("employeeSession");
+    if (employeeSession) {
+      try {
+        const sessionData = JSON.parse(employeeSession);
+        setCurrentUser(sessionData.employee);
+        
+        // Load employee data asynchronously
+        (async () => {
+          try {
+            const response = await fetch('/api/employee-data', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ employeeId: sessionData.employee.id }),
+            });
+
+            const employeeData = await response.json();
+
+            if (employeeData.success) {
+              setPolicies(employeeData.policies);
+              
+              const mappedSignatures = employeeData.signatures.map((sig: any) => ({
+                policyId: sig.policyId,
+                employeeId: sig.employeeId,
+                signedAt: sig.signedAt || new Date().toISOString(),
+                signatureData: sig.signatureData
+              }));
+              setSignatures(mappedSignatures);
+
+              if (employeeData.warnings) {
+                setWarnings(employeeData.warnings as Warning[]);
+              }
+            }
+          } catch (error) {
+            console.error('Error loading employee data:', error);
+            // Clear invalid session
+            localStorage.removeItem("employeeSession");
+            setCurrentUser(null);
+          } finally {
+            setIsLoading(false);
+          }
+        })();
+        
+        return; // Skip Firebase Auth listener for employees
+      } catch (e) {
+        console.error('Error parsing employee session:', e);
+        localStorage.removeItem("employeeSession");
+      }
+    }
+
     // Firebase mode - listen to auth changes (only on client side)
     if (typeof window === "undefined" || !auth) {
       setIsLoading(false);
@@ -626,10 +676,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logout = async () => {
     try {
       if (useFirebase && firebaseUser) {
-        // Sign out from Firebase Auth
+        // Sign out from Firebase Auth (for managers)
         const { signOut } = await import("@/lib/firebase");
         await signOut();
       }
+      
+      // Clear employee session from localStorage
+      localStorage.removeItem("employeeSession");
     } catch (error) {
       console.error("Error during logout:", error);
     }
@@ -802,6 +855,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const data = await response.json();
 
       if (response.ok && data.success) {
+        // Save employee session to localStorage for persistence across refreshes
+        localStorage.setItem("employeeSession", JSON.stringify({
+          employee: data.employee,
+          timestamp: Date.now(),
+        }));
+
         // Set the employee as current user
         setCurrentUser(data.employee);
         setActiveTabInternal("home");

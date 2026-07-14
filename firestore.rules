@@ -18,9 +18,10 @@ service cloud.firestore {
     
     // Users collection
     match /users/{userId} {
+      // Allow unauthenticated reads for employee login verification via API routes
       // Managers (authenticated) can read all users
-      // Server-side (Cloud Functions/API routes) can access via Admin SDK
-      allow read: if isSignedIn();
+      // Server-side API routes need this for employee authentication
+      allow read: if true;
       
       // Users can only write their own profile
       // Managers can write any profile (for onboarding)
@@ -29,8 +30,8 @@ service cloud.firestore {
     
     // Policies collection
     match /policies/{policyId} {
-      // Anyone authenticated can read policies
-      allow read: if isSignedIn();
+      // Allow unauthenticated reads for employee access via API routes
+      allow read: if true;
       
       // Only managers can create/update/delete policies
       allow write: if isManager();
@@ -38,19 +39,18 @@ service cloud.firestore {
     
     // Signatures collection
     match /signatures/{signatureId} {
-      // Anyone authenticated can read signatures
-      allow read: if isSignedIn();
+      // Allow unauthenticated reads for employee access via API routes
+      allow read: if true;
       
-      // Users can create signatures (sign policies)
-      // Cannot update or delete signatures once created
-      allow create: if isSignedIn();
+      // Allow unauthenticated creates for employee policy signing via API routes
+      allow create: if true;
       allow update, delete: if false;
     }
     
     // Warnings collection
     match /warnings/{warningId} {
-      // Anyone authenticated can read warnings
-      allow read: if isSignedIn();
+      // Allow unauthenticated reads for employee access via API routes
+      allow read: if true;
       
       // Only managers can create/update warnings
       allow create, update: if isManager();
