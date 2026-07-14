@@ -110,7 +110,11 @@ export default function ManagerWarningsPage() {
         <div className="flex flex-col gap-3 pb-10">
           {filteredWarnings.length > 0 ? (
             filteredWarnings.map((warning) => (
-              <div key={warning.id} className="bg-white rounded-2xl p-5 border border-zinc-200 shadow-2xs flex gap-4">
+              <Link
+                key={warning.id}
+                href={`/manager/warnings/${warning.id}`}
+                className="bg-white rounded-2xl p-5 border border-zinc-200 shadow-2xs flex gap-4 hover:border-zinc-300 hover:shadow-sm transition-all cursor-pointer"
+              >
                 <div className="bg-red-50 text-primary p-3 rounded-xl h-12 w-12 flex items-center justify-center shrink-0">
                   <AlertTriangle size={22} />
                 </div>
@@ -150,7 +154,7 @@ export default function ManagerWarningsPage() {
                     </span>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))
           ) : (
             <div className="text-center py-16 bg-white rounded-2xl border border-zinc-200">

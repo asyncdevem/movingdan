@@ -120,6 +120,7 @@ export const createUserProfile = async (userId: string, userData: {
   role: "employee" | "manager";
   title: string;
   avatar: string;
+  password?: string; // For employees who don't use Firebase Auth
 }) => {
   if (!db) throw new Error("Firebase not initialized");
   await setDoc(doc(db, "users", userId), {
@@ -402,13 +403,31 @@ export const getEmployeeSignatures = async (employeeId: string) => {
     where("employeeId", "==", employeeId)
   );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return querySnapshot.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      policyId: data.policyId,
+      employeeId: data.employeeId,
+      signatureData: data.signatureData,
+      signedAt: data.signedAt?.toDate ? data.signedAt.toDate().toISOString() : new Date().toISOString(),
+    };
+  });
 };
 
 export const getAllSignatures = async () => {
   if (!db) throw new Error("Firebase not initialized");
   const querySnapshot = await getDocs(collection(db, "signatures"));
-  return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return querySnapshot.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      policyId: data.policyId,
+      employeeId: data.employeeId,
+      signatureData: data.signatureData,
+      signedAt: data.signedAt?.toDate ? data.signedAt.toDate().toISOString() : new Date().toISOString(),
+    };
+  });
 };
 
 // ==========================================

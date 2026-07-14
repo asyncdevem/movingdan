@@ -19,13 +19,13 @@ export default function ManagerDashboardPage() {
     );
   }
 
-  // Redirect to login if not authenticated
-  if (!currentUser) {
+  // Redirect to login if not authenticated (but only after loading is complete)
+  if (!currentUser && !isLoading) {
     redirect("/");
   }
 
   // Redirect employees to employee dashboard
-  if (currentUser.role === "employee") {
+  if (currentUser && currentUser.role === "employee") {
     redirect("/employee");
   }
 

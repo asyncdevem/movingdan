@@ -43,7 +43,7 @@ export default function DashboardLayout({
   const navItems = isManager ? managerNavItems : employeeNavItems;
 
   return (
-    <div className="flex h-screen w-screen bg-zinc-50 overflow-hidden">
+    <div className="flex h-screen w-screen bg-zinc-50">
       
       {/* LEFT SIDEBAR (Desktop) */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-zinc-200 py-6 px-5 shrink-0 z-20">
@@ -116,7 +116,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 flex flex-col overflow-hidden relative">
+      <main className="flex-1 flex flex-col relative md:overflow-hidden">
         
         {/* Mobile Header */}
         <header className="md:hidden h-14 bg-white border-b border-zinc-200 px-4 flex items-center justify-between shrink-0 z-10">
@@ -147,7 +147,7 @@ export default function DashboardLayout({
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-zinc-55">
+        <div className="flex-1 flex flex-col overflow-y-auto md:overflow-hidden bg-zinc-50">
           {children}
         </div>
 

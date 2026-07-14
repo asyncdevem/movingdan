@@ -18,7 +18,8 @@ service cloud.firestore {
     
     // Users collection
     match /users/{userId} {
-      // Anyone authenticated can read user profiles
+      // Managers (authenticated) can read all users
+      // Server-side (Cloud Functions/API routes) can access via Admin SDK
       allow read: if isSignedIn();
       
       // Users can only write their own profile
@@ -60,7 +61,7 @@ service cloud.firestore {
     
     // Email queue collection (internal only)
     match /emailQueue/{queueId} {
-      // Only Cloud Functions can access email queue
+      // Only Cloud Functions can access email queue via Admin SDK
       // Regular users and even managers cannot access this
       allow read, write: if false;
     }

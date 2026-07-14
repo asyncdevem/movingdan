@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "../context";
 import { ArrowLeft, UserPlus, Mail, Phone, Calendar, ShieldCheck, KeyRound, CheckCircle, Eye, EyeOff } from "lucide-react";
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 
 export const AddEmployeeForm: React.FC = () => {
   const router = useRouter();
@@ -13,7 +15,7 @@ export const AddEmployeeForm: React.FC = () => {
   // Form states
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState<string>("");
   const [title, setTitle] = useState("Professional Mover");
   const [role, setRole] = useState<"employee" | "manager">("employee");
   const [startDate, setStartDate] = useState("");
@@ -33,6 +35,10 @@ export const AddEmployeeForm: React.FC = () => {
       setValidationError("Please enter a valid company email.");
       return;
     }
+    if (role === "employee" && !phone) {
+      setValidationError("Phone number is required for employees.");
+      return;
+    }
     if (!startDate) {
       setValidationError("Start date is required.");
       return;
@@ -46,10 +52,11 @@ export const AddEmployeeForm: React.FC = () => {
     setIsCreating(true);
     
     try {
-      // Call context action to create employee (this will handle Firebase auth + Firestore)
+      // Call context action to create employee
       await addEmployee({
         name,
         email,
+        phone: phone || "",
         title,
         role,
         password
@@ -57,11 +64,11 @@ export const AddEmployeeForm: React.FC = () => {
 
       setSuccess(true);
       setTimeout(() => {
-        router.push("/manager");
+        router.push("/manager/employees");
       }, 1500);
     } catch (err: any) {
       // Enhanced error messages
-      let errorMessage = "Failed to create employee account";
+      let errorMessage = "Failed to create account";
       
       if (err.code === "auth/email-already-in-use") {
         errorMessage = "This email is already registered. Please use a different email.";
@@ -70,7 +77,7 @@ export const AddEmployeeForm: React.FC = () => {
       } else if (err.code === "auth/weak-password") {
         errorMessage = "Password is too weak. Please use at least 6 characters.";
       } else if (err.code === "auth/operation-not-allowed") {
-        errorMessage = "Email/password authentication is not enabled. Please contact support.";
+        errorMessage = "Authentication is not enabled. Please contact support.";
       } else if (err.message) {
         errorMessage = err.message;
       }
@@ -163,19 +170,20 @@ export const AddEmployeeForm: React.FC = () => {
 
           {/* Phone Number */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-black uppercase text-zinc-600 tracking-wider">Phone (Optional)</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-zinc-400">
-                <Phone size={14} />
-              </span>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="e.g. (555) 019-2834"
-                className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl py-2.5 pl-10 pr-4 text-xs font-semibold text-zinc-800 outline-none transition-all"
-              />
-            </div>
+            <label className="text-xs font-black uppercase text-zinc-600 tracking-wider">
+              Phone Number {role === "employee" && <span className="text-red-500">*</span>}
+            </label>
+            <PhoneInput
+              international
+              defaultCountry="US"
+              value={phone}
+              onChange={(value) => setPhone(value || "")}
+              className="phone-input-custom phone-input-form"
+              placeholder="Enter phone number"
+            />
+            <p className="text-[10px] text-zinc-500 mt-1 font-semibold">
+              {role === "employee" ? "Required for employee login" : "Optional contact number"}
+            </p>
           </div>
 
           {/* Title/Position */}

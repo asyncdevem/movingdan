@@ -45,7 +45,7 @@ export const WarningForm: React.FC = () => {
   const [warningPeriod, setWarningPeriod] = useState("AM");
   const [warningType, setWarningType] = useState<string>(""); // Damage, Late, Call In / No Show, Not Following Rules, Other
   const [incidentDetails, setIncidentDetails] = useState("");
-  const [damageCost, setDamageCost] = useState("750.00");
+  const [damageCost, setDamageCost] = useState("0.00");
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [generatedWarningId, setGeneratedWarningId] = useState("");
@@ -431,96 +431,65 @@ export const WarningForm: React.FC = () => {
                 </div>
               </div>
 
-              {/* Datepicker display */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Date Selection</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-450 pointer-events-none">
-                    <Calendar size={14} />
-                  </span>
-                  <input
-                    type="date"
-                    value={warningDate}
-                    onChange={(e) => setWarningDate(e.target.value)}
-                    className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-2xl py-3 pl-9 pr-4 text-xs font-semibold text-zinc-800 outline-none"
-                  />
+              {/* Date & Time Selection */}
+              <div className="flex flex-col gap-4">
+                {/* Date Input */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Incident Date</label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-450 pointer-events-none">
+                      <Calendar size={14} />
+                    </span>
+                    <input
+                      type="date"
+                      value={warningDate}
+                      onChange={(e) => setWarningDate(e.target.value)}
+                      className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-2xl py-3 pl-9 pr-4 text-xs font-semibold text-zinc-800 outline-none"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Custom Simulated Scroll Time Picker */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Select Time (Drum Picker)</label>
-                
-                <div className="grid grid-cols-4 gap-1.5 border border-zinc-200 rounded-2xl bg-zinc-50 p-2.5 h-36 overflow-hidden">
-                  
-                  {/* Col 1: Date Labels */}
-                  <div className="flex flex-col gap-1 overflow-y-auto py-1 pr-1 border-r border-zinc-200">
-                    {dateOptions.map((d) => (
-                      <button
-                        key={d.label}
-                        onClick={() => setWarningDate(d.value)}
-                        className={`text-[9px] py-1.5 px-1 font-bold rounded-lg text-center ${
-                          warningDate === d.value
-                            ? "bg-primary text-white shadow-xs"
-                            : "text-zinc-655 hover:bg-zinc-200/50"
-                        }`}
-                      >
-                        {d.label.split(" ").slice(0, 3).join(" ")}
-                      </button>
-                    ))}
+                {/* Time Input */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="flex flex-col gap-1.5 col-span-1">
+                    <label className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Hour</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="12"
+                      value={warningHour}
+                      onChange={(e) => setWarningHour(e.target.value)}
+                      className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-2xl py-3 px-4 text-xs font-semibold text-zinc-800 outline-none text-center"
+                    />
                   </div>
-
-                  {/* Col 2: Hour */}
-                  <div className="flex flex-col gap-1 overflow-y-auto py-1 px-1 border-r border-zinc-200">
-                    {hourOptions.map((h) => (
-                      <button
-                        key={h}
-                        onClick={() => setWarningHour(h)}
-                        className={`text-[10px] py-1.5 font-black rounded-lg text-center ${
-                          warningHour === h
-                            ? "bg-primary text-white shadow-xs"
-                            : "text-zinc-650 hover:bg-zinc-200/50"
-                        }`}
-                      >
-                        {h}
-                      </button>
-                    ))}
+                  <div className="flex flex-col gap-1.5 col-span-1">
+                    <label className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Minute</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={warningMinute}
+                      onChange={(e) => setWarningMinute(String(e.target.value).padStart(2, '0'))}
+                      className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-2xl py-3 px-4 text-xs font-semibold text-zinc-800 outline-none text-center"
+                    />
                   </div>
-
-                  {/* Col 3: Minute */}
-                  <div className="flex flex-col gap-1 overflow-y-auto py-1 px-1 border-r border-zinc-200">
-                    {minuteOptions.map((m) => (
-                      <button
-                        key={m}
-                        onClick={() => setWarningMinute(m)}
-                        className={`text-[10px] py-1.5 font-bold rounded-lg text-center ${
-                          warningMinute === m
-                            ? "bg-primary text-white shadow-xs"
-                            : "text-zinc-650 hover:bg-zinc-200/50"
-                        }`}
-                      >
-                        {m}
-                      </button>
-                    ))}
+                  <div className="flex flex-col gap-1.5 col-span-1">
+                    <label className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Period</label>
+                    <select
+                      value={warningPeriod}
+                      onChange={(e) => setWarningPeriod(e.target.value)}
+                      className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-2xl py-3 px-4 text-xs font-bold text-zinc-800 outline-none"
+                    >
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
                   </div>
+                </div>
 
-                  {/* Col 4: AM/PM */}
-                  <div className="flex flex-col gap-1 overflow-y-auto py-1 pl-1">
-                    {periodOptions.map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => setWarningPeriod(p)}
-                        className={`text-[10px] py-1.5 font-black rounded-lg text-center ${
-                          warningPeriod === p
-                            ? "bg-primary text-white shadow-xs"
-                            : "text-zinc-650 hover:bg-zinc-200/50"
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                  </div>
-
+                {/* Preview */}
+                <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-center">
+                  <p className="text-[10px] font-black uppercase text-zinc-400 tracking-wider mb-1">Selected Time</p>
+                  <p className="text-sm font-bold text-zinc-900">{getFormattedDateTime()}</p>
                 </div>
               </div>
 
@@ -577,10 +546,7 @@ export const WarningForm: React.FC = () => {
                         <Icon size={18} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-black text-zinc-850">{item.type}</p>
-                          <span className="text-[9px] font-extrabold text-zinc-400 uppercase">Cost: {item.defaultCost}</span>
-                        </div>
+                        <p className="text-xs font-black text-zinc-850">{item.type}</p>
                         <p className="text-[10px] font-medium text-zinc-500 leading-normal mt-0.5">{item.desc}</p>
                       </div>
                     </button>
@@ -595,13 +561,7 @@ export const WarningForm: React.FC = () => {
                     setStepError("Please select a warning type before continuing.");
                     return;
                   }
-                  // Pre-populate default costs
-                  const chosen = warningTypes.find((t) => t.type === warningType);
-                  if (chosen && chosen.defaultCost !== "Custom Amount") {
-                    setDamageCost(chosen.defaultCost);
-                  } else {
-                    setDamageCost("750.00");
-                  }
+                  // Don't pre-populate cost - let manager enter it
                   goToStep(4);
                 }}
                 className="w-full py-3.5 bg-primary hover:bg-primary-hover text-white rounded-2xl text-xs font-black uppercase tracking-wider text-center transition-all shadow-md cursor-pointer hover:scale-[1.01] active:scale-[0.99]"

@@ -29,6 +29,7 @@ export interface User {
   name: string;
   role: UserRole;
   email: string;
+  phone?: string;
   title: string;
   avatar: string;
   password?: string;
@@ -81,7 +82,8 @@ interface AppContextProps {
   selectedEmployeeId: string | null; // for warning detail or profile
   switchRole: (role: UserRole) => void;
   loginAs: (userId: string) => void;
-  addEmployee: (employee: Omit<User, "id" | "avatar"> & { password?: string }) => void;
+  loginEmployee: (phone: string, password: string) => Promise<boolean>;
+  addEmployee: (employee: Omit<User, "id" | "avatar"> & { password?: string; phone?: string }) => Promise<void>;
   signPolicy: (policyId: string, signatureData: string) => void;
   issueWarning: (warning: Omit<Warning, "id" | "issuedBy" | "employeeName" | "details" | "status">) => void;
   addPolicy: (policy: Omit<Policy, "id">) => void;
@@ -106,6 +108,7 @@ const INITIAL_USERS: User[] = [
     name: "Marcus Miller",
     role: "employee",
     email: "marcus@movingdan.com",
+    phone: "+1 (555) 019-2831",
     title: "Professional Mover & Driver",
     avatar: "MM",
     password: "password",
@@ -115,6 +118,7 @@ const INITIAL_USERS: User[] = [
     name: "Sarah Jenkins",
     role: "employee",
     email: "sarah@movingdan.com",
+    phone: "+1 (555) 019-2832",
     title: "Mover & Packing Specialist",
     avatar: "SJ",
     password: "password",
@@ -124,6 +128,7 @@ const INITIAL_USERS: User[] = [
     name: "Lamar Washington",
     role: "employee",
     email: "lamar@movingdan.com",
+    phone: "+1 (555) 019-2833",
     title: "Crew Lead & Heavy Lifting Expert",
     avatar: "LW",
     password: "password",
@@ -133,6 +138,7 @@ const INITIAL_USERS: User[] = [
     name: "David Cooper",
     role: "employee",
     email: "david@movingdan.com",
+    phone: "+1 (555) 019-2834",
     title: "Mover / Driver",
     avatar: "DC",
     password: "password",
@@ -142,6 +148,7 @@ const INITIAL_USERS: User[] = [
     name: "Alex Johnson",
     role: "employee",
     email: "alex@movingdan.com",
+    phone: "+1 (555) 019-2835",
     title: "Professional Mover & Driver",
     avatar: "AJ",
     password: "password",
@@ -151,6 +158,7 @@ const INITIAL_USERS: User[] = [
     name: "Dan Stevens",
     role: "manager",
     email: "dan@movingdan.com",
+    phone: "+1 (555) 019-2800",
     title: "Owner / Operations Manager",
     avatar: "DS",
     password: "password",
@@ -408,7 +416,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [signatures, setSignatures] = useState<Signature[]>(INITIAL_SIGNATURES);
   const [warnings, setWarnings] = useState<Warning[]>(INITIAL_WARNINGS);
-  const [policies, setPolicies] = useState<Policy[]>(POLICIES);
+  const [policies, setPolicies] = useState<Policy[]>([]); // Start with empty array, load from Firebase
 
   // Navigation states
   const [currentScreen, setCurrentScreen] = useState<string>("home");
@@ -466,12 +474,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (user) {
         try {
           // Load user profile from Firestore
-          const userProfile = await getUserProfile(user.uid);
+          let userProfile = await getUserProfile(user.uid);
+          
+          // If profile doesn't exist, create it (for managers logging in for first time)
+          if (!userProfile && user.email) {
+            const initials = (user.displayName || user.email)
+              .split(/[\s@]/)[0]
+              .substring(0, 2)
+              .toUpperCase();
+            
+            await createUserProfile(user.uid, {
+              name: user.displayName || user.email.split('@')[0],
+              email: user.email,
+              phone: "",
+              role: "manager", // Default to manager for Firebase Auth users
+              title: "Manager",
+              avatar: initials,
+            });
+            
+            userProfile = await getUserProfile(user.uid);
+          }
+          
           if (userProfile) {
             setCurrentUser(userProfile as User);
           }
 
-          // Load all data from Firebase
+          // Load all data from Firebase (for managers)
           const [allUsers, allPolicies, allWarnings] = await Promise.all([
             getAllUsers(),
             getAllPolicies(),
@@ -504,7 +532,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else {
         setCurrentUser(null);
         setUsers(INITIAL_USERS);
-        setPolicies(POLICIES);
+        setPolicies([]); // Reset to empty array, not dummy data
         setSignatures(INITIAL_SIGNATURES);
         setWarnings(INITIAL_WARNINGS);
       }
@@ -595,7 +623,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Logout handler
-  const logout = () => {
+  const logout = async () => {
+    try {
+      if (useFirebase && firebaseUser) {
+        // Sign out from Firebase Auth
+        const { signOut } = await import("@/lib/firebase");
+        await signOut();
+      }
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+    
+    // Clear local state
     setCurrentUser(null);
     setCurrentScreen("home");
     setActiveTabInternal("home");
@@ -641,15 +680,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Add Employee (Manager-only) - Firebase integrated via API
-  const addEmployee = async (employeeData: Omit<User, "id" | "avatar"> & { password?: string }) => {
+  // Add Employee (Manager-only) - Updated with email sending via Resend
+  const addEmployee = async (employeeData: Omit<User, "id" | "avatar"> & { password?: string; phone?: string }) => {
     const initials = employeeData.name
       .split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase();
 
-    if (useFirebase) {
+    if (useFirebase && employeeData.role === "manager") {
+      // Managers use Firebase Auth
       try {
         // Create Firebase Authentication account via API (doesn't log out admin)
         if (employeeData.password && employeeData.email) {
@@ -677,7 +717,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           await createUserProfile(data.userId, {
             name: employeeData.name,
             email: employeeData.email,
-            phone: "",
+            phone: employeeData.phone || "",
             role: employeeData.role,
             title: employeeData.title,
             avatar: initials,
@@ -688,22 +728,132 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const allUsers = await getAllUsers();
         setUsers(allUsers as User[]);
       } catch (error) {
-        console.error("Error adding employee:", error);
+        console.error("Error adding manager:", error);
         throw error; // Re-throw to let the form handle it
       }
     } else {
-      // Demo mode - just add to local state
-      const newId = `emp-${Date.now()}`;
-      const newEmployee: User = {
-        ...employeeData,
-        id: newId,
-        avatar: initials,
-      };
-      setUsers((prev) => [...prev, newEmployee]);
+      // Employees use simple phone + password (no Firebase Auth)
+      try {
+        const newId = `emp-${Date.now()}`;
+        const newEmployee: User = {
+          ...employeeData,
+          id: newId,
+          avatar: initials,
+          phone: employeeData.phone || "",
+          password: employeeData.password, // Store password for non-Firebase auth
+        };
+        
+        if (useFirebase) {
+          // Store in Firestore (for persistence) but no Firebase Auth
+          await createUserProfile(newId, {
+            name: newEmployee.name,
+            email: newEmployee.email,
+            phone: newEmployee.phone || "",
+            role: newEmployee.role,
+            title: newEmployee.title,
+            avatar: initials,
+            password: employeeData.password, // Include password for employees
+          });
+          const allUsers = await getAllUsers();
+          setUsers(allUsers as User[]);
+        } else {
+          // Demo mode - just add to local state
+          setUsers((prev) => [...prev, newEmployee]);
+        }
+
+        // Send welcome email with credentials
+        if (employeeData.email && employeeData.phone && employeeData.password) {
+          try {
+            await fetch('/api/send-welcome-email', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                to: employeeData.email,
+                employeeName: employeeData.name,
+                phone: employeeData.phone,
+                password: employeeData.password,
+              }),
+            });
+          } catch (emailError) {
+            console.error("Failed to send welcome email:", emailError);
+            // Don't throw - employee creation was successful
+          }
+        }
+      } catch (error) {
+        console.error("Error adding employee:", error);
+        throw error;
+      }
     }
   };
 
-  // Sign policy (Employee-only) - Firebase integrated
+  // Employee login with phone + password (no Firebase Auth) - Uses API route
+  const loginEmployee = async (phone: string, password: string): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/employee-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phone, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Set the employee as current user
+        setCurrentUser(data.employee);
+        setActiveTabInternal("home");
+        setCurrentScreen("home");
+
+        // Load employee-specific data via API (avoids Firestore auth issues)
+        if (useFirebase) {
+          try {
+            const dataResponse = await fetch('/api/employee-data', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ employeeId: data.employee.id }),
+            });
+
+            const employeeData = await dataResponse.json();
+
+            if (employeeData.success) {
+              setPolicies(employeeData.policies);
+              
+              // Map to Signature format
+              const mappedSignatures = employeeData.signatures.map((sig: any) => ({
+                policyId: sig.policyId,
+                employeeId: sig.employeeId,
+                signedAt: sig.signedAt || new Date().toISOString(),
+                signatureData: sig.signatureData
+              }));
+              setSignatures(mappedSignatures);
+
+              // Load warnings for the employee
+              if (employeeData.warnings) {
+                setWarnings(employeeData.warnings as Warning[]);
+              }
+            }
+          } catch (error) {
+            console.error('Error loading employee data:', error);
+            // Don't fail login if data loading fails
+          }
+        }
+
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Employee login error:', error);
+      return false;
+    }
+  };
+
+  // Sign policy (Employee-only) - Uses API route for server-side operations
   const signPolicy = async (policyId: string, signatureData: string) => {
     if (!currentUser) return;
     const exists = signatures.some(
@@ -719,23 +869,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       signatureData,
     };
 
-    if (useFirebase && firebaseUser) {
+    if (useFirebase) {
       try {
-        await createSignature(newSig);
-        const userSignatures = await getEmployeeSignatures(firebaseUser.uid);
-        // Map Firebase docs to Signature format (Firebase adds id field)
-        const mappedSignatures = userSignatures.map((sig: any) => ({
-          policyId: sig.policyId,
-          employeeId: sig.employeeId,
-          signedAt: sig.signedAt || new Date().toISOString(),
-          signatureData: sig.signatureData
-        }));
-        setSignatures(mappedSignatures);
+        // Use API route for server-side signing (works for both employees and managers)
+        const response = await fetch('/api/sign-policy', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            policyId,
+            employeeId: currentUser.id,
+            signatureData,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to sign policy');
+        }
+
+        // Reload employee signatures via API (for employees) or direct query (for managers)
+        if (currentUser.role === 'employee') {
+          const dataResponse = await fetch('/api/employee-data', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ employeeId: currentUser.id }),
+          });
+
+          const employeeData = await dataResponse.json();
+
+          if (employeeData.success) {
+            const mappedSignatures = employeeData.signatures.map((sig: any) => ({
+              policyId: sig.policyId,
+              employeeId: sig.employeeId,
+              signedAt: sig.signedAt || new Date().toISOString(),
+              signatureData: sig.signatureData
+            }));
+            setSignatures(mappedSignatures);
+          }
+        } else if (firebaseUser) {
+          // For managers, reload all signatures
+          const allSignatures = await getAllSignatures();
+          const mappedSignatures = allSignatures.map((sig: any) => ({
+            policyId: sig.policyId,
+            employeeId: sig.employeeId,
+            signedAt: sig.signedAt || new Date().toISOString(),
+            signatureData: sig.signatureData
+          }));
+          setSignatures(mappedSignatures);
+        }
       } catch (error: any) {
         console.error("Error signing policy:", error);
         alert(`Failed to sign policy: ${error.message || "Unknown error"}`);
       }
     } else {
+      // Demo mode - just add to local state
       setSignatures((prev) => [...prev, newSig]);
     }
   };
@@ -908,6 +1100,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         selectedEmployeeId,
         switchRole,
         loginAs,
+        loginEmployee,
         addEmployee,
         signPolicy,
         issueWarning,

@@ -7,12 +7,17 @@ import { useApp } from "../context";
 import { FileText, AlertTriangle, UserPlus, BarChart3, ShieldCheck, ChevronRight } from "lucide-react";
 
 export const HomeDashboard: React.FC = () => {
-  const { currentUser, policies, signatures } = useApp();
+  const { currentUser, policies, signatures, warnings, users } = useApp();
   const isManager = currentUser?.role === "manager";
 
   // Calculate pending policies for the current user
   const userSignatures = signatures.filter((s) => s.employeeId === currentUser?.id);
   const pendingCount = policies.length - userSignatures.length;
+
+  // Calculate warning statistics for manager
+  const activeWarnings = warnings.filter(w => w.status === "Active");
+  const totalPenaltyCost = warnings.reduce((sum, w) => sum + (w.cost || 0), 0);
+  const recentWarnings = warnings.slice(0, 3); // Last 3 warnings
 
   return (
     <div className="flex-1 flex flex-col overflow-y-auto px-6 py-8">
@@ -61,6 +66,77 @@ export const HomeDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Manager Warnings Summary */}
+      {isManager && warnings.length > 0 && (
+        <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-2xl p-5 border border-red-100 shadow-xs mb-6">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-2">
+                <AlertTriangle size={14} />
+                Warnings Overview
+              </h4>
+              <p className="text-xs text-zinc-600 font-semibold mt-1">Active incidents & penalty tracking</p>
+            </div>
+            <Link
+              href="/manager/warnings"
+              className="text-[10px] font-black text-primary hover:text-primary-hover uppercase tracking-wider flex items-center gap-1"
+            >
+              View All
+              <ChevronRight size={12} />
+            </Link>
+          </div>
+          
+          {/* Stats Grid */}
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="bg-white rounded-xl p-3 border border-red-100">
+              <p className="text-[9px] font-black uppercase tracking-wider text-zinc-500">Total</p>
+              <p className="text-2xl font-black text-zinc-900 mt-1">{warnings.length}</p>
+            </div>
+            <div className="bg-white rounded-xl p-3 border border-red-100">
+              <p className="text-[9px] font-black uppercase tracking-wider text-zinc-500">Active</p>
+              <p className="text-2xl font-black text-primary mt-1">{activeWarnings.length}</p>
+            </div>
+            <div className="bg-white rounded-xl p-3 border border-red-100">
+              <p className="text-[9px] font-black uppercase tracking-wider text-zinc-500">Penalty Cost</p>
+              <p className="text-xl font-black text-zinc-900 mt-1">${totalPenaltyCost.toFixed(2)}</p>
+            </div>
+          </div>
+
+          {/* Recent Warnings */}
+          {recentWarnings.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[9px] font-black uppercase tracking-wider text-zinc-500 mb-2">Recent Incidents</p>
+              {recentWarnings.map((warning) => (
+                <div key={warning.id} className="bg-white rounded-lg p-3 border border-red-100 flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-zinc-900 truncate">{warning.employeeName}</p>
+                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
+                        warning.severity === "Final Warning" 
+                          ? "bg-red-100 text-red-700" 
+                          : warning.severity === "Written"
+                          ? "bg-zinc-900 text-white"
+                          : "bg-zinc-100 text-zinc-600"
+                      }`}>
+                        {warning.severity}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-zinc-600 font-semibold mt-0.5">
+                      {warning.warningType} • ${warning.cost}
+                    </p>
+                  </div>
+                  <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-full ml-2 ${
+                    warning.status === "Active" ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"
+                  }`}>
+                    {warning.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Employee compliance notice */}
       {!isManager && (
         <Link 
@@ -98,8 +174,8 @@ export const HomeDashboard: React.FC = () => {
       <div className="flex flex-col gap-4">
         {/* Written Policies (Red Button) */}
         <Link
-          href={isManager ? "/manager" : "/employee/policies"}
-          className="w-full flex items-center justify-between bg-primary hover:bg-primary-hover active:scale-[0.99] text-white py-4.5 px-5 rounded-2xl shadow-md transition-all duration-200 text-left font-bold"
+          href={isManager ? "/manager/policies" : "/employee/policies"}
+          className="w-full flex items-center justify-between bg-primary hover:bg-primary-hover active:scale-[0.99] text-white py-4.5 px-5 rounded-2xl shadow-md transition-all duration-200 text-left font-bold cursor-pointer"
         >
           <div className="flex items-center gap-4">
             <div className="bg-white/15 p-2.5 rounded-xl">
