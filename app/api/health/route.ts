@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebase-admin';
 
 export async function GET() {
-  const health = {
+  const health: any = {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
     firebase: {
@@ -19,19 +19,13 @@ export async function GET() {
   try {
     if (adminDb) {
       const testQuery = await adminDb.collection('users').limit(1).get();
-      health.firebase = {
-        ...health.firebase,
-        firestoreWorks: true,
-        canQueryUsers: true,
-        userCount: testQuery.size,
-      };
+      health.firebase.firestoreWorks = true;
+      health.firebase.canQueryUsers = true;
+      health.firebase.userCount = testQuery.size;
     }
   } catch (error: any) {
-    health.firebase = {
-      ...health.firebase,
-      firestoreWorks: false,
-      error: error.message,
-    };
+    health.firebase.firestoreWorks = false;
+    health.firebase.error = error.message;
   }
 
   return NextResponse.json(health);
