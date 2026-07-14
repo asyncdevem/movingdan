@@ -15,6 +15,12 @@ export async function POST(request: NextRequest) {
 
     // Normalize phone number (remove all non-digit characters)
     const normalizedPhone = phone.replace(/\D/g, '');
+    
+    console.log('Employee login attempt:', {
+      inputPhone: phone,
+      normalizedPhone,
+      passwordLength: password.length,
+    });
 
     // Query Firestore for employee with matching phone
     const usersRef = adminDb.collection('users');
@@ -22,11 +28,16 @@ export async function POST(request: NextRequest) {
       .where('role', '==', 'employee')
       .get();
 
+    console.log(`Found ${snapshot.size} employees in database`);
+
     // Find matching employee
     let matchingEmployee: any = null;
+    let foundPhones: string[] = [];
+    
     snapshot.forEach((doc: QueryDocumentSnapshot) => {
       const data = doc.data();
       const userPhone = (data.phone || '').replace(/\D/g, '');
+      foundPhones.push(userPhone);
       
       if (userPhone === normalizedPhone && data.password === password) {
         matchingEmployee = {
@@ -35,6 +46,9 @@ export async function POST(request: NextRequest) {
         };
       }
     });
+
+    console.log('Phone numbers in database:', foundPhones);
+    console.log('Match found:', !!matchingEmployee);
 
     if (!matchingEmployee) {
       return NextResponse.json(
