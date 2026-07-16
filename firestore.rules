@@ -52,11 +52,8 @@ service cloud.firestore {
       // Allow unauthenticated reads for employee access via API routes
       allow read: if true;
       
-      // Only managers can create/update warnings
-      allow create, update: if isManager();
-      
-      // Warnings cannot be deleted (permanent record)
-      allow delete: if false;
+      // Only managers can create/update/delete warnings
+      allow create, update, delete: if isManager();
     }
     
     // Email queue collection (internal only)

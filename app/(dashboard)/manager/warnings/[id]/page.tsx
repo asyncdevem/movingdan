@@ -4,12 +4,14 @@ import React, { useState, use } from "react";
 import { useApp } from "@/app/context";
 import { redirect, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, AlertTriangle, Calendar, DollarSign, User, FileText, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Calendar, DollarSign, User, FileText, CheckCircle, XCircle, Trash2 } from "lucide-react";
 
 export default function WarningDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { currentUser, warnings, users, updateWarningStatus, isLoading } = useApp();
   const router = useRouter();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Unwrap params Promise
   const { id } = use(params);
@@ -49,6 +51,30 @@ export default function WarningDetailPage({ params }: { params: Promise<{ id: st
     setIsUpdating(false);
   };
 
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch('/api/warnings/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ warningId: warning.id })
+      });
+
+      if (response.ok) {
+        // Redirect to warnings list after successful deletion
+        router.push('/manager/warnings');
+      } else {
+        alert('Failed to delete warning');
+        setIsDeleting(false);
+        setShowDeleteConfirm(false);
+      }
+    } catch (error) {
+      alert('Error deleting warning');
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
@@ -68,34 +94,90 @@ export default function WarningDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
         
-        {/* Status Toggle Button */}
-        <button
-          onClick={handleStatusToggle}
-          disabled={isUpdating}
-          className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-            warning.status === "Active"
-              ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-              : "bg-zinc-900 hover:bg-zinc-800 text-white"
-          } disabled:opacity-50 disabled:cursor-not-allowed`}
-        >
-          {isUpdating ? (
-            <>
-              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Updating...
-            </>
-          ) : warning.status === "Active" ? (
-            <>
-              <CheckCircle size={14} />
-              Mark Resolved
-            </>
-          ) : (
-            <>
-              <XCircle size={14} />
-              Reopen
-            </>
-          )}
-        </button>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3">
+          {/* Delete Button */}
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            disabled={isDeleting}
+            className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Trash2 size={14} />
+            Delete
+          </button>
+
+          {/* Status Toggle Button */}
+          <button
+            onClick={handleStatusToggle}
+            disabled={isUpdating}
+            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+              warning.status === "Active"
+                ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+                : "bg-zinc-900 hover:bg-zinc-800 text-white"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {isUpdating ? (
+              <>
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Updating...
+              </>
+            ) : warning.status === "Active" ? (
+              <>
+                <CheckCircle size={14} />
+                Mark Resolved
+              </>
+            ) : (
+              <>
+                <XCircle size={14} />
+                Reopen
+              </>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 rounded-xl bg-red-100 text-red-600">
+                <AlertTriangle size={24} />
+              </div>
+              <h3 className="text-lg font-black text-zinc-900">Delete Warning?</h3>
+            </div>
+            <p className="text-sm text-zinc-600 font-semibold mb-6">
+              Are you sure you want to permanently delete this warning? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2.5 bg-zinc-200 hover:bg-zinc-300 text-zinc-900 rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-6">

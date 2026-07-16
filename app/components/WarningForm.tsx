@@ -40,9 +40,6 @@ export const WarningForm: React.FC = () => {
   // Form selections
   const [targetEmployee, setTargetEmployee] = useState<User | null>(null);
   const [warningDate, setWarningDate] = useState("2024-05-22");
-  const [warningHour, setWarningHour] = useState("10");
-  const [warningMinute, setWarningMinute] = useState("45");
-  const [warningPeriod, setWarningPeriod] = useState("AM");
   const [warningType, setWarningType] = useState<string>(""); // Damage, Late, Call In / No Show, Not Following Rules, Other
   const [incidentDetails, setIncidentDetails] = useState("");
   const [damageCost, setDamageCost] = useState("0.00");
@@ -119,10 +116,10 @@ export const WarningForm: React.FC = () => {
   ];
 
   // Helper to format Date string
-  const getFormattedDateTime = () => {
-    const selectedOpt = dateOptions.find((d) => d.value === warningDate);
-    const dateLabel = selectedOpt ? selectedOpt.label.replace(" 2024", ", 2024") : "May 22, 2024";
-    return `${dateLabel.split(" ").slice(1).join(" ")} ${warningHour}:${warningMinute} ${warningPeriod}`;
+  const getFormattedDate = () => {
+    const date = new Date(warningDate);
+    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
   };
 
   // Canvas drawing handlers
@@ -203,7 +200,7 @@ export const WarningForm: React.FC = () => {
     if (!targetEmployee) return;
 
     const signatureData = canvasRef.current ? canvasRef.current.toDataURL("image/png") : "MOCK_SIGNATURE";
-    const dateFormatted = getFormattedDateTime();
+    const dateFormatted = getFormattedDate();
     const finalCost = parseFloat(damageCost.replace(/[$,\s]/g, "")) || 0;
 
     // Trigger context action
@@ -213,10 +210,10 @@ export const WarningForm: React.FC = () => {
       warningType,
       cost: finalCost,
       incidentDetails,
-      damageDate: warningType === "Damage" ? dateFormatted.split(" ").slice(0,3).join(" ") : undefined,
+      damageDate: warningType === "Damage" ? dateFormatted : undefined,
       damageCost: warningType === "Damage" ? damageCost : undefined,
       additionalNotes: additionalNotes.trim() ? additionalNotes : undefined,
-      photos: photos.length > 0 ? photos : undefined,
+      photos: warningType === "Damage" && photos.length > 0 ? photos : undefined,
       severity,
       managerSignature: signatureData
     });
@@ -412,11 +409,11 @@ export const WarningForm: React.FC = () => {
             </div>
           )}
 
-          {/* STEP 2: SELECT DATE & TIME */}
+          {/* STEP 2: SELECT DATE */}
           {step === 2 && targetEmployee && (
             <div className="p-5 flex flex-col gap-5">
               <div className="text-center">
-                <h3 className="text-base font-black text-zinc-800 uppercase tracking-tight">Select Date & Time</h3>
+                <h3 className="text-base font-black text-zinc-800 uppercase tracking-tight">Select Date</h3>
                 <p className="text-[11px] font-semibold text-zinc-555 mt-0.5">Specify when the infraction occurred</p>
               </div>
 
@@ -431,7 +428,7 @@ export const WarningForm: React.FC = () => {
                 </div>
               </div>
 
-              {/* Date & Time Selection */}
+              {/* Date Selection */}
               <div className="flex flex-col gap-4">
                 {/* Date Input */}
                 <div className="flex flex-col gap-1.5">
@@ -449,47 +446,10 @@ export const WarningForm: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Time Input */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="flex flex-col gap-1.5 col-span-1">
-                    <label className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Hour</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="12"
-                      value={warningHour}
-                      onChange={(e) => setWarningHour(e.target.value)}
-                      className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-2xl py-3 px-4 text-xs font-semibold text-zinc-800 outline-none text-center"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5 col-span-1">
-                    <label className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Minute</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="59"
-                      value={warningMinute}
-                      onChange={(e) => setWarningMinute(String(e.target.value).padStart(2, '0'))}
-                      className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-2xl py-3 px-4 text-xs font-semibold text-zinc-800 outline-none text-center"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5 col-span-1">
-                    <label className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Period</label>
-                    <select
-                      value={warningPeriod}
-                      onChange={(e) => setWarningPeriod(e.target.value)}
-                      className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-2xl py-3 px-4 text-xs font-bold text-zinc-800 outline-none"
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
-                </div>
-
                 {/* Preview */}
                 <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-center">
-                  <p className="text-[10px] font-black uppercase text-zinc-400 tracking-wider mb-1">Selected Time</p>
-                  <p className="text-sm font-bold text-zinc-900">{getFormattedDateTime()}</p>
+                  <p className="text-[10px] font-black uppercase text-zinc-400 tracking-wider mb-1">Selected Date</p>
+                  <p className="text-sm font-bold text-zinc-900">{getFormattedDate()}</p>
                 </div>
               </div>
 
@@ -521,7 +481,7 @@ export const WarningForm: React.FC = () => {
               {/* Small Header Summary */}
               <div className="border border-zinc-150 rounded-2xl p-3 bg-zinc-50 flex items-center justify-between text-[11px] font-bold text-zinc-600">
                 <span>Employee: {targetEmployee.name}</span>
-                <span>Date: {warningHour}:{warningMinute} {warningPeriod}</span>
+                <span>Date: {getFormattedDate()}</span>
               </div>
 
               {/* Warning Type Options */}
@@ -690,7 +650,12 @@ export const WarningForm: React.FC = () => {
                     setStepError("Please provide incident details before continuing.");
                     return;
                   }
-                  goToStep(5);
+                  // Only show photos step for Damage type
+                  if (warningType === "Damage") {
+                    goToStep(5);
+                  } else {
+                    goToStep(6);
+                  }
                 }}
                 className="w-full py-3.5 bg-primary hover:bg-primary-hover text-white rounded-2xl text-xs font-black uppercase tracking-wider text-center transition-all shadow-md cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
               >
@@ -699,8 +664,8 @@ export const WarningForm: React.FC = () => {
             </div>
           )}
 
-          {/* STEP 5: ATTACH PHOTOS */}
-          {step === 5 && targetEmployee && (
+          {/* STEP 5: ATTACH PHOTOS - Only for Damage warnings */}
+          {step === 5 && targetEmployee && warningType === "Damage" && (
             <div className="p-5 flex flex-col gap-5">
               <div className="text-center">
                 <h3 className="text-base font-black text-zinc-800 uppercase tracking-tight">{warningType} Photos</h3>
@@ -787,8 +752,8 @@ export const WarningForm: React.FC = () => {
                     <span className="text-zinc-855 font-bold">{targetEmployee.name}</span>
                   </div>
                   <div>
-                    <span className="block text-[9px] font-black uppercase text-zinc-400">Date & Time</span>
-                    <span className="text-zinc-855 font-bold">{getFormattedDateTime()}</span>
+                    <span className="block text-[9px] font-black uppercase text-zinc-400">Date</span>
+                    <span className="text-zinc-855 font-bold">{getFormattedDate()}</span>
                   </div>
                   <div className="col-span-2 flex items-center gap-2">
                     <span className="text-[9px] font-black uppercase text-zinc-400">Warning Type:</span>
