@@ -23,7 +23,7 @@ function markdownToHtml(markdown: string): string {
   
   // Bullet lists
   html = html.replace(/^\* (.+)$/gim, '<li style="margin: 4px 0; color: #18181b; font-size: 14px;">$1</li>');
-  html = html.replace(/(<li.*<\/li>)/s, '<ul style="margin: 12px 0; padding-left: 24px; list-style-type: disc;">$1</ul>');
+  html = html.replace(/(<li[\s\S]*<\/li>)/gim, '<ul style="margin: 12px 0; padding-left: 24px; list-style-type: disc;">$1</ul>');
   
   // Numbered lists
   html = html.replace(/^\d+\. (.+)$/gim, '<li style="margin: 4px 0; color: #18181b; font-size: 14px;">$1</li>');

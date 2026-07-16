@@ -11,6 +11,7 @@ import {
   signInWithCredential,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  updatePassword as firebaseUpdatePassword,
   User as FirebaseUser
 } from "firebase/auth";
 import { 
@@ -82,6 +83,13 @@ export const signInWithEmail = async (email: string, password: string) => {
 export const signOut = async () => {
   if (!auth) throw new Error("Firebase not initialized");
   return await firebaseSignOut(auth);
+};
+
+export const updatePassword = async (newPassword: string) => {
+  if (!auth) throw new Error("Firebase not initialized");
+  const user = auth.currentUser;
+  if (!user) throw new Error("No user logged in");
+  return await firebaseUpdatePassword(user, newPassword);
 };
 
 // Phone Authentication Setup
