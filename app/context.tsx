@@ -96,6 +96,7 @@ interface AppContextProps {
   updateWarningStatus: (warningId: string, status: "Active" | "Resolved") => void;
   disableUser: (userId: string, disabled: boolean) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
+  refreshData: () => Promise<void>; // Refresh all data from Firebase
   isLoading: boolean;
 }
 
@@ -467,6 +468,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (employeeSession) {
       try {
         const sessionData = JSON.parse(employeeSession);
+        
+        // Keep loading state true while we restore the session
+        setIsLoading(true);
         setCurrentUser(sessionData.employee);
         
         // Load employee data asynchronously
@@ -494,6 +498,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               if (employeeData.warnings) {
                 setWarnings(employeeData.warnings as Warning[]);
               }
+            } else {
+              // Clear invalid session
+              localStorage.removeItem("employeeSession");
+              setCurrentUser(null);
             }
           } catch (error) {
             console.error('Error loading employee data:', error);
@@ -505,10 +513,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         })();
         
-        return; // Skip Firebase Auth listener for employees
+        return () => {}; // Skip Firebase Auth listener for employees
       } catch (e) {
         console.error('Error parsing employee session:', e);
         localStorage.removeItem("employeeSession");
+        setIsLoading(false);
       }
     }
 
@@ -1140,8 +1149,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         throw error;
       }
     } else {
-      // Demo mode - just remove from local state
+      // Demo mode
       setUsers((prev) => prev.filter((u) => u.id !== userId));
+    }
+  };
+
+  // Refresh all data from Firebase (for use after CRUD operations)
+  const refreshData = async () => {
+    if (!useFirebase || !firebaseUser) return;
+
+    try {
+      // Reload all data from Firebase
+      const [allUsers, allPolicies, allWarnings] = await Promise.all([
+        getAllUsers(),
+        getAllPolicies(),
+        getAllWarnings(),
+      ]);
+
+      setUsers(allUsers as User[]);
+      setPolicies(allPolicies as Policy[]);
+      setWarnings(allWarnings as Warning[]);
+
+      // Reload signatures
+      const userProfile = await getUserProfile(firebaseUser.uid);
+      if (userProfile) {
+        const isManager = (userProfile as any).role === "manager";
+        const signaturesData = isManager 
+          ? await getAllSignatures()
+          : await getEmployeeSignatures(firebaseUser.uid);
+        
+        const mappedSignatures = signaturesData.map((sig: any) => ({
+          policyId: sig.policyId,
+          employeeId: sig.employeeId,
+          signedAt: sig.signedAt || new Date().toISOString(),
+          signatureData: sig.signatureData
+        }));
+        setSignatures(mappedSignatures);
+      }
+    } catch (error) {
+      console.error("Error refreshing data:", error);
     }
   };
 
@@ -1172,6 +1218,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateWarningStatus,
         disableUser,
         deleteUser,
+        refreshData,
         isLoading,
         addPolicy,
       }}

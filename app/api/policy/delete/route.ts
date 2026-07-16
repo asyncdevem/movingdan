@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebase-admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,33 +12,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-
-    if (!projectId) {
-      console.error('Firebase config missing');
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      );
-    }
-
-    // Delete policy from Firestore using REST API
-    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/policies/${policyId}`;
-    
-    const deleteResponse = await fetch(firestoreUrl, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    });
-
-    if (!deleteResponse.ok) {
-      console.error('Firestore delete failed:', deleteResponse.status);
-      return NextResponse.json(
-        { error: 'Failed to delete policy' },
-        { status: 500 }
-      );
-    }
+    // Delete policy from Firestore using Admin SDK
+    await adminDb.collection('policies').doc(policyId).delete();
 
     return NextResponse.json({
       success: true,

@@ -3,15 +3,19 @@
 import React, { useRef, useState, useEffect } from "react";
 import { useApp } from "../context";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, CheckCircle, RotateCcw, PenTool, Calendar, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle, RotateCcw, PenTool, Calendar, ShieldCheck, Edit, Trash2, X, Heading, Bold, List, Eye, EyeOff } from "lucide-react";
 import { PolicyIcon } from "./PoliciesList";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Toast, ToastType, ConfirmModal } from "./Toast";
 
 export const PolicyDetail: React.FC = () => {
   const { 
     currentUser, 
     policies, 
     signatures, 
-    signPolicy
+    signPolicy,
+    refreshData
   } = useApp();
   
   const router = useRouter();
@@ -22,6 +26,18 @@ export const PolicyDetail: React.FC = () => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ title: "", shortDesc: "", content: "", iconName: "" });
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showEditPreview, setShowEditPreview] = useState(false);
+  const editContentRef = React.useRef<HTMLTextAreaElement>(null);
+
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+  const isManager = currentUser?.role === "manager";
 
   const policy = policies.find((p) => p.id === policyId);
   const userSignature = signatures.find(
@@ -136,6 +152,89 @@ export const PolicyDetail: React.FC = () => {
     }
   };
 
+  const handleEditPolicy = () => {
+    if (!policy) return;
+    setEditForm({
+      title: policy.title,
+      shortDesc: policy.shortDesc,
+      content: policy.content,
+      iconName: policy.iconName
+    });
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!policy) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/policy/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          policyId: policy.id,
+          updates: editForm
+        })
+      });
+
+      if (response.ok) {
+        setToast({ message: 'Policy updated successfully!', type: 'success' });
+        setIsEditing(false);
+        await refreshData(); // Refresh context data instead of page reload
+      } else {
+        const data = await response.json();
+        setToast({ message: `Failed to update: ${data.error}`, type: 'error' });
+      }
+    } catch (error) {
+      setToast({ message: 'Error updating policy', type: 'error' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeletePolicy = async () => {
+    if (!policy) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch('/api/policy/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ policyId: policy.id })
+      });
+
+      if (response.ok) {
+        router.push('/manager/policies');
+      } else {
+        setToast({ message: 'Failed to delete policy', type: 'error' });
+        setIsDeleting(false);
+        setShowDeleteConfirm(false);
+      }
+    } catch (error) {
+      setToast({ message: 'Error deleting policy', type: 'error' });
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const insertEditMarkdown = (before: string, after: string = "") => {
+    const textarea = editContentRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = editForm.content.substring(start, end);
+    const newText = editForm.content.substring(0, start) + before + selectedText + after + editForm.content.substring(end);
+    
+    setEditForm({...editForm, content: newText});
+    
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + before.length + selectedText.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
+
   if (!policy) {
     return (
       <div className="p-5 text-center">
@@ -147,34 +246,29 @@ export const PolicyDetail: React.FC = () => {
     );
   }
 
-  // Basic custom markdown renderer to render bold titles, bullets, and body text beautifully
+  // Render policy content using ReactMarkdown
   const renderPolicyContent = (text: string) => {
-    return text.split("\n\n").map((block, idx) => {
-      if (block.startsWith("###")) {
-        return (
-          <h3 key={idx} className="text-sm font-black text-zinc-900 uppercase tracking-tight mt-6 mb-2">
-            {block.replace("###", "").trim()}
-          </h3>
-        );
-      }
-      if (block.startsWith("*") || block.startsWith("-")) {
-        const items = block
-          .split("\n")
-          .map((item) => item.replace(/^[\*\-\s]+/, "").trim());
-        return (
-          <ul key={idx} className="list-disc pl-5 space-y-1.5 my-3 text-xs font-semibold text-zinc-700">
-            {items.map((item, itemIdx) => (
-              <li key={itemIdx}>{item}</li>
-            ))}
-          </ul>
-        );
-      }
-      return (
-        <p key={idx} className="text-xs font-semibold text-zinc-600 leading-relaxed my-2">
-          {block}
-        </p>
-      );
-    });
+    return (
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({node, ...props}) => <h1 className="text-lg font-black text-zinc-900 uppercase tracking-tight mt-6 mb-3" {...props} />,
+          h2: ({node, ...props}) => <h2 className="text-base font-black text-zinc-900 uppercase tracking-tight mt-6 mb-3" {...props} />,
+          h3: ({node, ...props}) => <h3 className="text-sm font-black text-zinc-900 uppercase tracking-tight mt-6 mb-2" {...props} />,
+          p: ({node, ...props}) => <p className="text-xs font-semibold text-zinc-600 leading-relaxed my-2" {...props} />,
+          ul: ({node, ...props}) => <ul className="list-disc pl-5 space-y-1.5 my-3 text-xs font-semibold text-zinc-700" {...props} />,
+          ol: ({node, ...props}) => <ol className="list-decimal pl-5 space-y-1.5 my-3 text-xs font-semibold text-zinc-700" {...props} />,
+          li: ({node, ...props}) => <li className="text-xs font-semibold text-zinc-700" {...props} />,
+          strong: ({node, ...props}) => <strong className="font-bold text-zinc-900" {...props} />,
+          em: ({node, ...props}) => <em className="italic" {...props} />,
+          a: ({node, ...props}) => <a className="text-primary underline hover:text-primary-hover" target="_blank" rel="noopener noreferrer" {...props} />,
+          code: ({node, ...props}) => <code className="bg-zinc-100 text-zinc-800 px-1.5 py-0.5 rounded text-[11px] font-mono" {...props} />,
+          blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-primary pl-4 my-3 italic text-zinc-600" {...props} />,
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    );
   };
 
   return (
@@ -191,13 +285,33 @@ export const PolicyDetail: React.FC = () => {
           </button>
           <h2 className="text-base font-extrabold text-zinc-900 max-w-[200px] truncate">{policy.title}</h2>
         </div>
-        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-          isSigned 
-            ? "bg-emerald-50 text-emerald-700 border border-emerald-100" 
-            : "bg-red-50 text-primary border border-red-100"
-        }`}>
-          {isSigned ? "Signed" : "Pending"}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+            isSigned 
+              ? "bg-emerald-50 text-emerald-700 border border-emerald-100" 
+              : "bg-red-50 text-primary border border-red-100"
+          }`}>
+            {isSigned ? "Signed" : "Pending"}
+          </span>
+          {isManager && (
+            <>
+              <button
+                onClick={handleEditPolicy}
+                className="p-2 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors"
+                title="Edit Policy"
+              >
+                <Edit size={16} />
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="p-2 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+                title="Delete Policy"
+              >
+                <Trash2 size={16} />
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Scrollable Policy Content Area */}
@@ -336,6 +450,215 @@ export const PolicyDetail: React.FC = () => {
 
         </div>
       </div>
+
+      {/* Edit Policy Modal */}
+      {isEditing && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-xl my-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-blue-100 text-blue-600">
+                  <Edit size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-zinc-900">Edit Policy</h3>
+                  <p className="text-xs text-zinc-500 font-semibold">Update policy information</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsEditing(false)}
+                className="p-2 rounded-lg hover:bg-zinc-100 transition-colors"
+              >
+                <X size={20} className="text-zinc-500" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto">
+              {/* Title */}
+              <div>
+                <label className="text-xs font-black uppercase tracking-wider text-zinc-500 block mb-2">
+                  Policy Title
+                </label>
+                <input
+                  type="text"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({...editForm, title: e.target.value})}
+                  className="w-full bg-white border border-zinc-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 rounded-xl py-3 px-4 text-sm font-semibold text-zinc-800 outline-none"
+                />
+              </div>
+
+              {/* Short Description */}
+              <div>
+                <label className="text-xs font-black uppercase tracking-wider text-zinc-500 block mb-2">
+                  Short Description
+                </label>
+                <input
+                  type="text"
+                  value={editForm.shortDesc}
+                  onChange={(e) => setEditForm({...editForm, shortDesc: e.target.value})}
+                  className="w-full bg-white border border-zinc-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 rounded-xl py-3 px-4 text-sm font-semibold text-zinc-800 outline-none"
+                />
+              </div>
+
+              {/* Icon Name */}
+              <div>
+                <label className="text-xs font-black uppercase tracking-wider text-zinc-500 block mb-2">
+                  Icon Name (Lucide)
+                </label>
+                <input
+                  type="text"
+                  value={editForm.iconName}
+                  onChange={(e) => setEditForm({...editForm, iconName: e.target.value})}
+                  className="w-full bg-white border border-zinc-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 rounded-xl py-3 px-4 text-sm font-semibold text-zinc-800 outline-none"
+                  placeholder="Truck, Calendar, Clock, etc."
+                />
+              </div>
+
+              {/* Content */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-xs font-black uppercase tracking-wider text-zinc-500">
+                    Policy Content
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPreview(!showEditPreview)}
+                    className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-600 hover:text-zinc-900 transition-colors"
+                  >
+                    {showEditPreview ? <EyeOff size={12} /> : <Eye size={12} />}
+                    {showEditPreview ? "Edit" : "Preview"}
+                  </button>
+                </div>
+
+                {/* Formatting Toolbar */}
+                {!showEditPreview && (
+                  <div className="flex items-center gap-1 p-2 bg-zinc-100 border border-zinc-200 rounded-xl mb-2">
+                    <button
+                      type="button"
+                      onClick={() => insertEditMarkdown("### ", "\n")}
+                      className="p-2 rounded-lg hover:bg-white hover:shadow-sm transition-all text-zinc-600 hover:text-zinc-900"
+                      title="Heading"
+                    >
+                      <Heading size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertEditMarkdown("**", "**")}
+                      className="p-2 rounded-lg hover:bg-white hover:shadow-sm transition-all text-zinc-600 hover:text-zinc-900"
+                      title="Bold"
+                    >
+                      <Bold size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertEditMarkdown("* ", "\n")}
+                      className="p-2 rounded-lg hover:bg-white hover:shadow-sm transition-all text-zinc-600 hover:text-zinc-900"
+                      title="Bullet List"
+                    >
+                      <List size={16} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Editor / Preview */}
+                <div className="border border-zinc-200 rounded-xl overflow-hidden">
+                  {showEditPreview ? (
+                    <div className="bg-white p-4 min-h-[300px] max-h-[400px] overflow-y-auto">
+                      {renderPolicyContent(editForm.content)}
+                    </div>
+                  ) : (
+                    <textarea
+                      ref={editContentRef}
+                      rows={12}
+                      value={editForm.content}
+                      onChange={(e) => setEditForm({...editForm, content: e.target.value})}
+                      className="w-full bg-white p-4 text-sm font-mono text-zinc-800 outline-none resize-none"
+                      placeholder="Use ### for headings, * for bullets..."
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setIsEditing(false)}
+                disabled={isSaving}
+                className="flex-1 px-4 py-3 bg-zinc-200 hover:bg-zinc-300 text-zinc-900 rounded-xl text-sm font-black uppercase tracking-wider transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={isSaving}
+                className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black uppercase tracking-wider transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 rounded-xl bg-red-100 text-red-600">
+                <Trash2 size={24} />
+              </div>
+              <h3 className="text-lg font-black text-zinc-900">Delete Policy?</h3>
+            </div>
+            <p className="text-sm text-zinc-600 font-semibold mb-6">
+              Are you sure you want to permanently delete this policy? All employee signatures will be lost. This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2.5 bg-zinc-200 hover:bg-zinc-300 text-zinc-900 rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeletePolicy}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
 
     </div>
   );
