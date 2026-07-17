@@ -1,14 +1,21 @@
 "use client";
 
-import React, { use } from "react";
+import React, { use, useState, useRef, useEffect } from "react";
 import { useApp } from "@/app/context";
 import { redirect, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, AlertTriangle, Calendar, DollarSign, User, FileText } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Calendar, DollarSign, User, FileText, PenTool, RotateCcw, CheckCircle } from "lucide-react";
+import { Toast, ToastType } from "@/app/components/Toast";
 
 export default function EmployeeWarningDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { currentUser, warnings, isLoading } = useApp();
+  const { currentUser, warnings, isLoading, signWarning, refreshData } = useApp();
   const router = useRouter();
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
+  const [isSigning, setIsSigning] = useState(false);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   
   // Unwrap params Promise
   const { id } = use(params);
@@ -20,6 +27,99 @@ export default function EmployeeWarningDetailPage({ params }: { params: Promise<
   }
 
   const warning = warnings.find((w) => w.id === id && w.employeeId === currentUser.id);
+
+  // Set up drawing canvas for signature
+  useEffect(() => {
+    if (!showSignatureModal || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.strokeStyle = "#c5221f"; // Primary Red ink
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+  }, [showSignatureModal]);
+
+  // Canvas drawing handlers
+  const getCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!canvasRef.current) return { x: 0, y: 0 };
+    const rect = canvasRef.current.getBoundingClientRect();
+    if ("touches" in e) {
+      if (e.touches.length === 0) return { x: 0, y: 0 };
+      const touch = e.touches[0];
+      return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    setIsDrawing(true);
+    const coords = getCoordinates(e);
+    const ctx = canvasRef.current?.getContext("2d");
+    if (ctx && coords) {
+      ctx.beginPath();
+      ctx.moveTo(coords.x, coords.y);
+    }
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const coords = getCoordinates(e);
+    const ctx = canvasRef.current?.getContext("2d");
+    if (ctx && coords) {
+      ctx.lineTo(coords.x, coords.y);
+      ctx.stroke();
+      setHasDrawn(true);
+    }
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+
+  const clearCanvas = () => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      setHasDrawn(false);
+    }
+  };
+
+  const handleSignWarning = async () => {
+    if (!hasDrawn || !canvasRef.current || !warning) {
+      setToast({ message: 'Please provide your signature', type: 'error' });
+      return;
+    }
+
+    setIsSigning(true);
+    try {
+      const signatureData = canvasRef.current.toDataURL("image/png");
+      await signWarning(warning.id, signatureData);
+      setToast({ message: 'Warning signed successfully', type: 'success' });
+      setShowSignatureModal(false);
+      setHasDrawn(false);
+      await refreshData();
+    } catch (error) {
+      setToast({ message: 'Failed to sign warning', type: 'error' });
+    } finally {
+      setIsSigning(false);
+    }
+  };
 
   if (!warning) {
     return (
@@ -218,7 +318,7 @@ export default function EmployeeWarningDetailPage({ params }: { params: Promise<
           )}
 
           {/* Information Card */}
-          <div className="bg-blue-50 rounded-2xl p-5 border border-blue-200">
+          <div className="bg-blue-50 rounded-2xl p-5 border border-blue-200 mb-6">
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-lg bg-blue-500 text-white shrink-0">
                 <AlertTriangle size={18} />
@@ -234,8 +334,138 @@ export default function EmployeeWarningDetailPage({ params }: { params: Promise<
             </div>
           </div>
 
+          {/* Employee Signature Section */}
+          <div className="bg-white rounded-2xl p-6 border border-zinc-200 shadow-xs">
+            <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500 mb-4">
+              Employee Acknowledgment
+            </h4>
+            {warning.employeeSignature ? (
+              <div className="bg-emerald-50 rounded-xl p-5 border border-emerald-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <CheckCircle size={20} className="text-emerald-600" />
+                  <p className="text-sm font-bold text-emerald-700">You have signed this warning</p>
+                </div>
+                <div className="bg-white rounded-lg p-4 border border-emerald-200">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-zinc-400 mb-2">Your Signature</p>
+                  <div className="h-24 flex items-center justify-center bg-zinc-50 rounded-lg border border-zinc-200">
+                    {warning.employeeSignature.startsWith('data:image') ? (
+                      <img 
+                        src={warning.employeeSignature} 
+                        alt="Employee signature" 
+                        className="max-h-20 object-contain"
+                      />
+                    ) : (
+                      <p className="text-xs text-zinc-500 font-semibold italic">Signed</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="bg-amber-50 rounded-xl p-5 border border-amber-200 mb-4">
+                  <div className="flex items-center gap-3">
+                    <PenTool size={18} className="text-amber-600" />
+                    <p className="text-sm font-bold text-amber-700">Signature Required</p>
+                  </div>
+                  <p className="text-xs text-zinc-600 mt-2 leading-relaxed">
+                    You must acknowledge this warning by providing your digital signature. This confirms you have read and understood the incident details.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowSignatureModal(true)}
+                  className="w-full py-3.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+                >
+                  <PenTool size={16} />
+                  Sign Warning
+                </button>
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* Signature Modal */}
+      {showSignatureModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-xl">
+            <h3 className="text-lg font-black text-zinc-900 mb-2">Sign Warning</h3>
+            <p className="text-xs text-zinc-600 font-semibold mb-4">
+              Please sign below to acknowledge you have read and understood this warning.
+            </p>
+            
+            {/* Canvas */}
+            <div className="border-2 border-zinc-300 rounded-xl mb-4 bg-zinc-50 relative">
+              <canvas
+                ref={canvasRef}
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
+                className="w-full h-48 touch-none cursor-crosshair rounded-xl"
+                style={{ touchAction: 'none' }}
+              />
+              {!hasDrawn && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <p className="text-xs text-zinc-400 font-semibold">Sign here with your finger or mouse</p>
+                </div>
+              )}
+            </div>
+
+            {/* Controls */}
+            <div className="flex gap-3">
+              <button
+                onClick={clearCanvas}
+                disabled={!hasDrawn}
+                className="px-4 py-2.5 bg-zinc-200 hover:bg-zinc-300 text-zinc-900 rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <RotateCcw size={14} />
+                Clear
+              </button>
+              <button
+                onClick={() => {
+                  setShowSignatureModal(false);
+                  setHasDrawn(false);
+                  clearCanvas();
+                }}
+                disabled={isSigning}
+                className="flex-1 px-4 py-2.5 bg-zinc-200 hover:bg-zinc-300 text-zinc-900 rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSignWarning}
+                disabled={!hasDrawn || isSigning}
+                className="flex-1 px-4 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isSigning ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Signing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle size={14} />
+                    Confirm
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

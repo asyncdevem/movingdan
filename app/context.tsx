@@ -93,6 +93,7 @@ interface AppContextProps {
   signup: (name: string, email: string, role: UserRole, title: string, password?: string) => void;
   logout: () => void;
   updateWarningStatus: (warningId: string, status: "Active" | "Resolved") => void;
+  signWarning: (warningId: string, signatureData: string) => Promise<void>;
   disableUser: (userId: string, disabled: boolean) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   refreshData: () => Promise<void>; // Refresh all data from Firebase
@@ -636,7 +637,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Call server action to delete session cookie
       const { logout: logoutAction } = await import("@/app/actions/auth");
       await logoutAction();
-    } catch (error) {
+    } catch (error: any) {
+      // NEXT_REDIRECT is not an error - it's how Next.js handles redirects in server actions
+      if (error?.message?.includes('NEXT_REDIRECT') || error?.digest?.startsWith('NEXT_REDIRECT')) {
+        // This is expected - the redirect is happening
+        return;
+      }
+      
       console.error("Error during logout:", error);
       // Still clear local state even if server action fails
       setCurrentUser(null);
@@ -658,6 +665,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } else {
       setWarnings((prev) =>
         prev.map((w) => (w.id === warningId ? { ...w, status } : w))
+      );
+    }
+  };
+
+  // Sign Warning (Employee acknowledgment)
+  const signWarning = async (warningId: string, signatureData: string) => {
+    if (useFirebase === true) {
+      try {
+        const response = await fetch('/api/warnings/sign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ warningId, employeeSignature: signatureData })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to sign warning');
+        }
+
+        // Refresh warnings to get updated data
+        await refreshData();
+      } catch (error) {
+        console.error("Error signing warning:", error);
+        throw error;
+      }
+    } else {
+      // Mock mode
+      setWarnings((prev) =>
+        prev.map((w) => (w.id === warningId ? { ...w, employeeSignature: signatureData } : w))
       );
     }
   };
@@ -1106,6 +1141,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         signup,
         logout,
         updateWarningStatus,
+        signWarning,
         disableUser,
         deleteUser,
         refreshData,

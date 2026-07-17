@@ -83,7 +83,14 @@ export async function POST(request: NextRequest) {
             else if (field.booleanValue !== undefined) data[key] = field.booleanValue;
             else if (field.timestampValue !== undefined) data[key] = field.timestampValue;
             else if (field.arrayValue !== undefined) {
-              data[key] = field.arrayValue.values?.map((v: any) => v.stringValue || v) || [];
+              // Properly extract all values from arrays including photos
+              data[key] = field.arrayValue.values?.map((v: any) => {
+                if (v.stringValue !== undefined) return v.stringValue;
+                if (v.integerValue !== undefined) return parseInt(v.integerValue);
+                if (v.doubleValue !== undefined) return v.doubleValue;
+                if (v.booleanValue !== undefined) return v.booleanValue;
+                return v;
+              }) || [];
             }
           }
           
