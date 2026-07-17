@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { adminDb } from '@/lib/firebase-admin';
 
 export async function GET() {
   try {
@@ -10,27 +9,55 @@ export async function GET() {
       return NextResponse.json({ session: null }, { status: 200 });
     }
 
-    // Check if Firebase Admin is initialized
-    if (!adminDb) {
-      console.error('[Session API] Firebase Admin not initialized');
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+    if (!projectId) {
+      console.error('[Session API] Firebase project ID missing');
       return NextResponse.json({ session: null }, { status: 200 });
     }
 
-    // Get full user profile from Firestore using Admin SDK
-    const userDoc = await adminDb.collection('users').doc(session.userId).get();
+    // Get full user profile from Firestore using REST API
+    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${session.userId}`;
+    
+    const response = await fetch(firestoreUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-    if (!userDoc.exists) {
+    if (!response.ok) {
+      console.error('[Session API] Failed to fetch user:', response.status);
       return NextResponse.json({ session: null }, { status: 200 });
     }
 
-    const userData = userDoc.data();
+    const userDoc = await response.json();
+
+    if (!userDoc.fields) {
+      return NextResponse.json({ session: null }, { status: 200 });
+    }
+
+    // Convert Firestore fields to regular object
+    const userData: any = {
+      id: session.userId,
+      role: session.role,
+    };
+
+    // Map Firestore field values
+    Object.keys(userDoc.fields).forEach((key) => {
+      const field = userDoc.fields[key];
+      if (field.stringValue !== undefined) {
+        userData[key] = field.stringValue;
+      } else if (field.integerValue !== undefined) {
+        userData[key] = parseInt(field.integerValue);
+      } else if (field.booleanValue !== undefined) {
+        userData[key] = field.booleanValue;
+      }
+    });
 
     return NextResponse.json({
       session: {
-        user: {
-          id: session.userId,
-          ...userData,
-        },
+        user: userData,
         role: session.role,
       },
     });
