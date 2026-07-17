@@ -12,8 +12,9 @@ export async function POST(request: NextRequest) {
     }
 
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
-    if (!projectId) {
+    if (!projectId || !apiKey) {
       return NextResponse.json(
         { error: 'Server configuration error' },
         { status: 500 }
@@ -42,8 +43,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Update warning in Firestore using REST API
-    const updateUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/warnings/${warningId}?${updateMask}`;
+    // Update warning in Firestore using REST API with API key
+    const updateUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/warnings/${warningId}?${updateMask}&key=${apiKey}`;
     
     const response = await fetch(updateUrl, {
       method: 'PATCH',
@@ -54,8 +55,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Update failed:', response.status, errorText);
       return NextResponse.json(
-        { error: 'Failed to update warning' },
+        { error: 'Failed to update warning', details: errorText },
         { status: 500 }
       );
     }

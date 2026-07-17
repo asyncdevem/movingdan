@@ -12,16 +12,17 @@ export async function POST(request: NextRequest) {
     }
 
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
-    if (!projectId) {
+    if (!projectId || !apiKey) {
       return NextResponse.json(
         { error: 'Server configuration error' },
         { status: 500 }
       );
     }
 
-    // Delete policy from Firestore using REST API
-    const deleteUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/policies/${policyId}`;
+    // Delete policy from Firestore using REST API with API key
+    const deleteUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/policies/${policyId}?key=${apiKey}`;
     
     const response = await fetch(deleteUrl, {
       method: 'DELETE'

@@ -19,8 +19,9 @@ export async function POST(request: NextRequest) {
     }
 
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
-    if (!projectId) {
+    if (!projectId || !apiKey) {
       console.error('Firebase config missing');
       return NextResponse.json(
         { error: 'Server configuration error' },
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // First, verify current password by fetching the employee using REST API
-    const getUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${employeeId}`;
+    const getUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${employeeId}?key=${apiKey}`;
     
     const getResponse = await fetch(getUrl);
 
@@ -50,8 +51,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update password in Firestore using REST API
-    const updateUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${employeeId}?updateMask.fieldPaths=password`;
+    // Update password in Firestore using REST API with API key
+    const updateUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${employeeId}?updateMask.fieldPaths=password&key=${apiKey}`;
     
     const updateResponse = await fetch(updateUrl, {
       method: 'PATCH',

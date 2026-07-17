@@ -12,8 +12,9 @@ export async function POST(request: NextRequest) {
     }
 
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
-    if (!projectId) {
+    if (!projectId || !apiKey) {
       return NextResponse.json(
         { error: 'Server configuration error' },
         { status: 500 }
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if signature already exists using REST API query
-    const queryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
+    const queryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery?key=${apiKey}`;
     
     const queryResponse = await fetch(queryUrl, {
       method: 'POST',
@@ -66,8 +67,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create signature using REST API
-    const createUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/signatures`;
+    // Create signature using REST API with API key
+    const createUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/signatures?key=${apiKey}`;
     
     const createResponse = await fetch(createUrl, {
       method: 'POST',
