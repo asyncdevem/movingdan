@@ -5,13 +5,15 @@ import { useApp } from "@/app/context";
 import { redirect, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, AlertTriangle, Calendar, DollarSign, User, FileText, CheckCircle, XCircle, Trash2 } from "lucide-react";
+import { Toast, ToastType } from "@/app/components/Toast";
 
 export default function WarningDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { currentUser, warnings, users, updateWarningStatus, isLoading } = useApp();
+  const { currentUser, warnings, users, updateWarningStatus, refreshData, isLoading } = useApp();
   const router = useRouter();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   
   // Unwrap params Promise
   const { id } = use(params);
@@ -61,15 +63,18 @@ export default function WarningDetailPage({ params }: { params: Promise<{ id: st
       });
 
       if (response.ok) {
+        // Refresh data to remove the deleted warning from state
+        await refreshData();
+        setToast({ message: 'Warning deleted successfully', type: 'success' });
         // Redirect to warnings list after successful deletion
-        router.push('/manager/warnings');
+        setTimeout(() => router.push('/manager/warnings'), 1000);
       } else {
-        alert('Failed to delete warning');
+        setToast({ message: 'Failed to delete warning', type: 'error' });
         setIsDeleting(false);
         setShowDeleteConfirm(false);
       }
     } catch (error) {
-      alert('Error deleting warning');
+      setToast({ message: 'Error deleting warning', type: 'error' });
       setIsDeleting(false);
       setShowDeleteConfirm(false);
     }
@@ -77,6 +82,15 @@ export default function WarningDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       {/* Header */}
       <div className="h-16 bg-white border-b border-zinc-200 px-6 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">

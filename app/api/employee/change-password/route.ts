@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebase-admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,10 +19,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-
-    if (!projectId) {
-      console.error('Firebase config missing');
+    if (!adminDb) {
+      console.error('Firebase Admin not initialized');
       return NextResponse.json(
         { error: 'Server configuration error' },
         { status: 500 }
@@ -29,24 +28,17 @@ export async function POST(request: NextRequest) {
     }
 
     // First, verify current password by fetching the employee
-    const getUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${employeeId}`;
-    
-    const getResponse = await fetch(getUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    });
+    const employeeDoc = await adminDb.collection('users').doc(employeeId).get();
 
-    if (!getResponse.ok) {
+    if (!employeeDoc.exists) {
       return NextResponse.json(
         { error: 'Employee not found' },
         { status: 404 }
       );
     }
 
-    const employeeDoc = await getResponse.json();
-    const storedPassword = employeeDoc.fields?.password?.stringValue;
+    const employeeData = employeeDoc.data();
+    const storedPassword = employeeData?.password;
 
     if (storedPassword !== currentPassword) {
       return NextResponse.json(
@@ -55,28 +47,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update password in Firestore using REST API
-    const updateUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${employeeId}?updateMask.fieldPaths=password`;
-    
-    const updateResponse = await fetch(updateUrl, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fields: {
-          password: { stringValue: newPassword }
-        }
-      })
+    // Update password in Firestore using Admin SDK
+    await adminDb.collection('users').doc(employeeId).update({
+      password: newPassword
     });
-
-    if (!updateResponse.ok) {
-      console.error('Firestore update failed:', updateResponse.status);
-      return NextResponse.json(
-        { error: 'Failed to update password' },
-        { status: 500 }
-      );
-    }
 
     return NextResponse.json({
       success: true,

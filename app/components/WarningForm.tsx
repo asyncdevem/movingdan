@@ -54,9 +54,27 @@ export const WarningForm: React.FC = () => {
 
   // Search state for Step 1
   const [searchQuery, setSearchQuery] = useState("");
+  const [filteredMovers, setFilteredMovers] = useState<User[]>([]);
 
   // Only employees can receive warnings
   const movers = users.filter((u) => u.role === "employee");
+
+  // Update filtered movers whenever search query or users list changes
+  useEffect(() => {
+    const employeeList = users.filter((u) => u.role === "employee");
+    
+    if (!searchQuery.trim()) {
+      setFilteredMovers(employeeList);
+    } else {
+      const query = searchQuery.toLowerCase().trim();
+      const filtered = employeeList.filter((m) => 
+        m.name.toLowerCase().includes(query) ||
+        m.title.toLowerCase().includes(query) ||
+        m.email.toLowerCase().includes(query)
+      );
+      setFilteredMovers(filtered);
+    }
+  }, [searchQuery, users]);
 
   // Load pre-selected employee from context if available
   useEffect(() => {
@@ -203,20 +221,32 @@ export const WarningForm: React.FC = () => {
     const dateFormatted = getFormattedDate();
     const finalCost = parseFloat(damageCost.replace(/[$,\s]/g, "")) || 0;
 
-    // Trigger context action
-    issueWarning({
+    // Build warning data object (omit undefined fields for Firestore)
+    const warningData: any = {
       employeeId: targetEmployee.id,
       date: dateFormatted,
       warningType,
       cost: finalCost,
       incidentDetails,
-      damageDate: warningType === "Damage" ? dateFormatted : undefined,
-      damageCost: warningType === "Damage" ? damageCost : undefined,
-      additionalNotes: additionalNotes.trim() ? additionalNotes : undefined,
-      photos: warningType === "Damage" && photos.length > 0 ? photos : undefined,
       severity,
       managerSignature: signatureData
-    });
+    };
+
+    // Only add optional fields if they have values
+    if (warningType === "Damage") {
+      warningData.damageDate = dateFormatted;
+      warningData.damageCost = damageCost;
+      if (photos.length > 0) {
+        warningData.photos = photos;
+      }
+    }
+
+    if (additionalNotes.trim()) {
+      warningData.additionalNotes = additionalNotes;
+    }
+
+    // Trigger context action
+    issueWarning(warningData);
 
     // Generate a temporary ID matching standard format for display in Success Screen (Step 7)
     const now = new Date();
@@ -337,39 +367,46 @@ export const WarningForm: React.FC = () => {
                   placeholder="Search employees..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-2xl py-3 pl-10 pr-4 text-xs font-semibold text-zinc-800 placeholder-zinc-400 outline-none transition-all"
+                  className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-2xl py-3 pl-10 pr-10 text-xs font-semibold text-zinc-800 placeholder-zinc-400 outline-none transition-all"
                 />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-zinc-400 hover:text-zinc-700 transition-colors"
+                  >
+                    <X size={15} />
+                  </button>
+                )}
               </div>
 
-              {/* Dropdown Field */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Employee Dropdown</label>
-                <select
-                  value={targetEmployee?.id || ""}
-                  onChange={(e) => {
-                    const emp = movers.find((m) => m.id === e.target.value);
-                    if (emp) setTargetEmployee(emp);
-                  }}
-                  className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-2xl p-3 text-xs font-bold text-zinc-850 outline-none"
-                >
-                  <option value="">Select an employee...</option>
-                  {movers.map((m) => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-              </div>
+              {/* Results count */}
+              {searchQuery && (
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[10px] font-bold text-zinc-500">
+                    {filteredMovers.length} {filteredMovers.length === 1 ? 'employee' : 'employees'} found
+                  </span>
+                  {filteredMovers.length > 0 && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="text-[10px] font-bold text-primary hover:text-primary-hover transition-colors"
+                    >
+                      Clear search
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Interactive Employees List */}
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Select from list:</span>
                 <div className="flex flex-col gap-2 max-h-64 overflow-y-auto border border-zinc-150 rounded-2xl p-2 bg-zinc-50">
-                  {movers
-                    .filter((m) => m.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                    .map((m) => (
+                  {filteredMovers.length > 0 ? (
+                    filteredMovers.map((m) => (
                       <button
                         key={m.id}
                         onClick={() => {
                           setTargetEmployee(m);
+                          setSearchQuery(""); // Clear search after selection
                           goToStep(2);
                         }}
                         className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
@@ -389,7 +426,14 @@ export const WarningForm: React.FC = () => {
                         </div>
                         <ChevronRight size={14} className="text-zinc-400" />
                       </button>
-                    ))}
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <Search size={32} className="text-zinc-300 mb-2" />
+                      <p className="text-xs font-bold text-zinc-500">No employees found</p>
+                      <p className="text-[10px] text-zinc-400 mt-1">Try a different search term</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1037,7 +1081,7 @@ export const WarningForm: React.FC = () => {
       {/* DETAIL HISTORY WARNING DRAWER MODAL */}
       {selectedHistoryWarning && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-2xs">
-          <div className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-xl border border-zinc-200 max-h-[90vh] flex flex-col justify-between animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-xl border border-zinc-200 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
             
             <div className="h-14 bg-white border-b border-zinc-200 px-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
@@ -1134,34 +1178,46 @@ export const WarningForm: React.FC = () => {
                 </div>
               </div>
 
+              {/* Employee Signature (if exists) */}
+              {selectedHistoryWarning.employeeSignature && (
+                <div className="mt-3 pt-3 border-t border-zinc-150">
+                  <div className="border border-zinc-150 rounded-xl p-3 text-center bg-blue-50/30">
+                    <span className="block text-[8px] font-black uppercase text-zinc-450 mb-2">Employee Acknowledgment</span>
+                    {selectedHistoryWarning.employeeSignature.startsWith("data:image") ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={selectedHistoryWarning.employeeSignature} alt="Employee Sig" className="max-h-10 object-contain mx-auto" />
+                    ) : (
+                      <span className="text-[9px] font-mono italic text-zinc-500 block">Acknowledged</span>
+                    )}
+                    <span className="text-[8px] text-zinc-400 font-semibold mt-1 block">Employee has acknowledged this warning</span>
+                  </div>
+                </div>
+              )}
+
             </div>
 
             {/* Modal Actions */}
-            <div className="p-4 border-t border-zinc-200 bg-zinc-55 flex items-center justify-between gap-3 shrink-0">
-              {currentUser?.role === "manager" ? (
+            <div className="px-4 py-3 border-t border-zinc-200 bg-white flex items-center gap-3 shrink-0">
+              {currentUser?.role === "manager" && (
                 <button
                   onClick={() => {
                     const nextStatus = selectedHistoryWarning.status === "Active" ? "Resolved" : "Active";
                     updateWarningStatus(selectedHistoryWarning.id, nextStatus);
                     setSelectedHistoryWarning((prev) => prev ? { ...prev, status: nextStatus } : null);
                   }}
-                  className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center text-white ${
+                  className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer text-white ${
                     selectedHistoryWarning.status === "Active"
-                      ? "bg-emerald-655 hover:bg-emerald-600 shadow-md"
-                      : "bg-zinc-800 hover:bg-zinc-750 shadow-md"
+                      ? "bg-emerald-600 hover:bg-emerald-700"
+                      : "bg-zinc-800 hover:bg-zinc-900"
                   }`}
                 >
-                  Mark as {selectedHistoryWarning.status === "Active" ? "Resolved" : "Active"}
+                  {selectedHistoryWarning.status === "Active" ? "✓ Resolve" : "Reopen"}
                 </button>
-              ) : (
-                <div className="text-[10px] text-zinc-400 italic">
-                  Read-only view for Movers.
-                </div>
               )}
               
               <button
                 onClick={() => setSelectedHistoryWarning(null)}
-                className="px-4 py-3 bg-white hover:bg-zinc-100 border border-zinc-250 text-zinc-755 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                className="flex-1 py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 text-xs font-black uppercase tracking-wider rounded-lg transition-all"
               >
                 Close
               </button>

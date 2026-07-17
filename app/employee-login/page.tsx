@@ -3,15 +3,17 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Phone, Lock, ArrowRight, Loader2, AlertCircle, Eye, EyeOff, ArrowLeft } from "lucide-react";
-import { useApp } from "../context";
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
+import { loginEmployee } from "@/app/actions/auth";
 
 export default function EmployeeLoginPage() {
   const router = useRouter();
-  const { currentUser, isLoading: contextLoading, loginEmployee } = useApp();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/employee';
+  
   const [isMounted, setIsMounted] = useState(false);
 
   // Login fields
@@ -26,13 +28,6 @@ export default function EmployeeLoginPage() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
-
-  // Redirect if already logged in
-  useEffect(() => {
-    if (!contextLoading && currentUser && currentUser.role === "employee") {
-      router.replace("/employee");
-    }
-  }, [currentUser, contextLoading, router]);
 
   if (!isMounted) {
     return null;
@@ -50,12 +45,17 @@ export default function EmployeeLoginPage() {
     setError("");
 
     try {
-      const success = await loginEmployee(phone, password);
+      const result = await loginEmployee(phone, password);
       
-      if (success) {
-        // User will be redirected by useEffect after context updates
+      if (result.success) {
+        // Wait a moment for cookie to be set
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Redirect to callback URL or employee dashboard
+        window.location.href = callbackUrl;
       } else {
-        setError("Invalid phone number or password. Please try again.");
+        setError(result.error || "Invalid phone number or password");
+        setIsLoading(false);
       }
     } catch (err: any) {
       setError(err.message || "Login failed. Please try again.");

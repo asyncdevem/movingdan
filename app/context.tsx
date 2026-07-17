@@ -82,7 +82,6 @@ interface AppContextProps {
   selectedEmployeeId: string | null; // for warning detail or profile
   switchRole: (role: UserRole) => void;
   loginAs: (userId: string) => void;
-  loginEmployee: (phone: string, password: string) => Promise<boolean>;
   addEmployee: (employee: Omit<User, "id" | "avatar"> & { password?: string; phone?: string }) => Promise<void>;
   signPolicy: (policyId: string, signatureData: string) => void;
   issueWarning: (warning: Omit<Warning, "id" | "issuedBy" | "employeeName" | "details" | "status">) => void;
@@ -425,7 +424,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedPolicyId, setSelectedPolicyId] = useState<string | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [useFirebase, setUseFirebase] = useState(false);
+  const [useFirebase, setUseFirebase] = useState<boolean | null>(null); // null = not yet determined
 
   // Check if Firebase is configured
   useEffect(() => {
@@ -434,9 +433,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUseFirebase(isConfigured);
   }, []);
 
-  // Firebase Auth Listener
+  // Firebase Auth Listener - Updated to use server-side session
   useEffect(() => {
-    if (!useFirebase) {
+    // Wait until we know if Firebase is configured
+    if (useFirebase === null) {
+      return;
+    }
+
+    if (useFirebase === false) {
       // Use localStorage for demo mode
       const savedUser = localStorage.getItem("currentUser");
       const savedUsers = localStorage.getItem("users");
@@ -463,26 +467,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    // Firebase mode - Check for employee session in localStorage first
-    const employeeSession = localStorage.getItem("employeeSession");
-    if (employeeSession) {
+    // Firebase mode - Load session from server-side cookie
+    (async () => {
       try {
-        const sessionData = JSON.parse(employeeSession);
+        const response = await fetch('/api/auth/session', {
+          cache: 'no-store',
+          credentials: 'include', // Important: include cookies in request
+        });
         
-        // Keep loading state true while we restore the session
-        setIsLoading(true);
-        setCurrentUser(sessionData.employee);
+        if (!response.ok) {
+          console.error('[Context] Session API returned error:', response.status);
+          setCurrentUser(null);
+          setIsLoading(false);
+          return;
+        }
         
-        // Load employee data asynchronously
-        (async () => {
-          try {
-            const response = await fetch('/api/employee-data', {
+        const data = await response.json();
+
+        if (data.session && data.session.user) {
+          const user = data.session.user;
+          setCurrentUser(user);
+
+          // Load all data based on role
+          if (user.role === 'manager') {
+            // Managers get all data
+            const [allUsers, allPolicies, allWarnings, allSignatures] = await Promise.all([
+              getAllUsers(),
+              getAllPolicies(),
+              getAllWarnings(),
+              getAllSignatures(),
+            ]);
+
+            setUsers(allUsers as User[]);
+            setPolicies(allPolicies as Policy[]);
+            setWarnings(allWarnings as Warning[]);
+            setSignatures(allSignatures.map((sig: any) => ({
+              policyId: sig.policyId,
+              employeeId: sig.employeeId,
+              signedAt: sig.signedAt || new Date().toISOString(),
+              signatureData: sig.signatureData
+            })));
+          } else if (user.role === 'employee') {
+            // Employees get limited data
+            const employeeResponse = await fetch('/api/employee-data', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ employeeId: sessionData.employee.id }),
+              body: JSON.stringify({ employeeId: user.id }),
+              cache: 'no-store',
             });
 
-            const employeeData = await response.json();
+            const employeeData = await employeeResponse.json();
 
             if (employeeData.success) {
               setPolicies(employeeData.policies);
@@ -498,119 +532,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               if (employeeData.warnings) {
                 setWarnings(employeeData.warnings as Warning[]);
               }
-            } else {
-              // Clear invalid session
-              localStorage.removeItem("employeeSession");
-              setCurrentUser(null);
             }
-          } catch (error) {
-            console.error('Error loading employee data:', error);
-            // Clear invalid session
-            localStorage.removeItem("employeeSession");
-            setCurrentUser(null);
-          } finally {
-            setIsLoading(false);
           }
-        })();
-        
-        return () => {}; // Skip Firebase Auth listener for employees
-      } catch (e) {
-        console.error('Error parsing employee session:', e);
-        localStorage.removeItem("employeeSession");
+        } else {
+          // No session
+          setCurrentUser(null);
+          setUsers(INITIAL_USERS);
+          setPolicies([]);
+          setSignatures(INITIAL_SIGNATURES);
+          setWarnings(INITIAL_WARNINGS);
+        }
+      } catch (error) {
+        console.error("[Context] Error loading session:", error);
+        setCurrentUser(null);
+      } finally {
         setIsLoading(false);
       }
-    }
-
-    // Firebase mode - listen to auth changes (only on client side)
-    if (typeof window === "undefined" || !auth) {
-      setIsLoading(false);
-      return;
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setFirebaseUser(user);
-      
-      if (user) {
-        try {
-          // Load user profile from Firestore
-          let userProfile = await getUserProfile(user.uid);
-          
-          // If profile doesn't exist, create it (for managers logging in for first time)
-          if (!userProfile && user.email) {
-            const initials = (user.displayName || user.email)
-              .split(/[\s@]/)[0]
-              .substring(0, 2)
-              .toUpperCase();
-            
-            await createUserProfile(user.uid, {
-              name: user.displayName || user.email.split('@')[0],
-              email: user.email,
-              phone: "",
-              role: "manager", // Default to manager for Firebase Auth users
-              title: "Manager",
-              avatar: initials,
-            });
-            
-            userProfile = await getUserProfile(user.uid);
-          }
-          
-          if (userProfile) {
-            setCurrentUser(userProfile as User);
-          }
-
-          // Load all data from Firebase (for managers)
-          const [allUsers, allPolicies, allWarnings] = await Promise.all([
-            getAllUsers(),
-            getAllPolicies(),
-            getAllWarnings(),
-          ]);
-
-          setUsers(allUsers as User[]);
-          setPolicies(allPolicies as Policy[]);
-          setWarnings(allWarnings as Warning[]);
-
-          // Load signatures - managers get ALL signatures, employees get only their own
-          if (userProfile) {
-            const isManager = (userProfile as any).role === "manager";
-            const signaturesData = isManager 
-              ? await getAllSignatures()
-              : await getEmployeeSignatures(user.uid);
-            
-            // Map Firebase docs to Signature format (Firebase adds id field)
-            const mappedSignatures = signaturesData.map((sig: any) => ({
-              policyId: sig.policyId,
-              employeeId: sig.employeeId,
-              signedAt: sig.signedAt || new Date().toISOString(),
-              signatureData: sig.signatureData
-            }));
-            setSignatures(mappedSignatures);
-          }
-        } catch (error) {
-          console.error("Error loading Firebase data:", error);
-        }
-      } else {
-        setCurrentUser(null);
-        setUsers(INITIAL_USERS);
-        setPolicies([]); // Reset to empty array, not dummy data
-        setSignatures(INITIAL_SIGNATURES);
-        setWarnings(INITIAL_WARNINGS);
-      }
-      
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
+    })();
   }, [useFirebase]);
 
   // Sync to localStorage only in demo mode
   useEffect(() => {
-    if (!isLoading && !useFirebase) {
+    if (!isLoading && useFirebase === false) {
       localStorage.setItem("users", JSON.stringify(users));
     }
   }, [users, isLoading, useFirebase]);
 
   useEffect(() => {
-    if (!isLoading && !useFirebase) {
+    if (!isLoading && useFirebase === false) {
       if (currentUser) {
         localStorage.setItem("currentUser", JSON.stringify(currentUser));
       } else {
@@ -620,19 +569,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentUser, isLoading, useFirebase]);
 
   useEffect(() => {
-    if (!isLoading && !useFirebase) {
+    if (!isLoading && useFirebase === false) {
       localStorage.setItem("signatures", JSON.stringify(signatures));
     }
   }, [signatures, isLoading, useFirebase]);
 
   useEffect(() => {
-    if (!isLoading && !useFirebase) {
+    if (!isLoading && useFirebase === false) {
       localStorage.setItem("warnings", JSON.stringify(warnings));
     }
   }, [warnings, isLoading, useFirebase]);
 
   useEffect(() => {
-    if (!isLoading && !useFirebase) {
+    if (!isLoading && useFirebase === false) {
       localStorage.setItem("policies", JSON.stringify(policies));
     }
   }, [policies, isLoading, useFirebase]);
@@ -684,27 +633,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Logout handler
   const logout = async () => {
     try {
-      if (useFirebase && firebaseUser) {
-        // Sign out from Firebase Auth (for managers)
-        const { signOut } = await import("@/lib/firebase");
-        await signOut();
-      }
-      
-      // Clear employee session from localStorage
-      localStorage.removeItem("employeeSession");
+      // Call server action to delete session cookie
+      const { logout: logoutAction } = await import("@/app/actions/auth");
+      await logoutAction();
     } catch (error) {
       console.error("Error during logout:", error);
+      // Still clear local state even if server action fails
+      setCurrentUser(null);
+      setCurrentScreen("home");
+      setActiveTabInternal("home");
     }
-    
-    // Clear local state
-    setCurrentUser(null);
-    setCurrentScreen("home");
-    setActiveTabInternal("home");
   };
 
   // Warning Status Toggle handler - Firebase integrated
   const updateWarningStatus = async (warningId: string, status: "Active" | "Resolved") => {
-    if (useFirebase) {
+    if (useFirebase === true) {
       try {
         await updateWarning(warningId, { status });
         const allWarnings = await getAllWarnings();
@@ -750,7 +693,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .join("")
       .toUpperCase();
 
-    if (useFirebase && employeeData.role === "manager") {
+    if (useFirebase === true && employeeData.role === "manager") {
       // Managers use Firebase Auth
       try {
         // Create Firebase Authentication account via API (doesn't log out admin)
@@ -805,7 +748,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           password: employeeData.password, // Store password for non-Firebase auth
         };
         
-        if (useFirebase) {
+        if (useFirebase === true) {
           // Store in Firestore (for persistence) but no Firebase Auth
           await createUserProfile(newId, {
             name: newEmployee.name,
@@ -850,77 +793,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Employee login with phone + password (no Firebase Auth) - Uses API route
-  const loginEmployee = async (phone: string, password: string): Promise<boolean> => {
-    try {
-      const response = await fetch('/api/employee-login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ phone, password }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        // Save employee session to localStorage for persistence across refreshes
-        localStorage.setItem("employeeSession", JSON.stringify({
-          employee: data.employee,
-          timestamp: Date.now(),
-        }));
-
-        // Set the employee as current user
-        setCurrentUser(data.employee);
-        setActiveTabInternal("home");
-        setCurrentScreen("home");
-
-        // Load employee-specific data via API (avoids Firestore auth issues)
-        if (useFirebase) {
-          try {
-            const dataResponse = await fetch('/api/employee-data', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ employeeId: data.employee.id }),
-            });
-
-            const employeeData = await dataResponse.json();
-
-            if (employeeData.success) {
-              setPolicies(employeeData.policies);
-              
-              // Map to Signature format
-              const mappedSignatures = employeeData.signatures.map((sig: any) => ({
-                policyId: sig.policyId,
-                employeeId: sig.employeeId,
-                signedAt: sig.signedAt || new Date().toISOString(),
-                signatureData: sig.signatureData
-              }));
-              setSignatures(mappedSignatures);
-
-              // Load warnings for the employee
-              if (employeeData.warnings) {
-                setWarnings(employeeData.warnings as Warning[]);
-              }
-            }
-          } catch (error) {
-            console.error('Error loading employee data:', error);
-            // Don't fail login if data loading fails
-          }
-        }
-
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      console.error('Employee login error:', error);
-      return false;
-    }
-  };
-
   // Sign policy (Employee-only) - Uses API route for server-side operations
   const signPolicy = async (policyId: string, signatureData: string) => {
     if (!currentUser) return;
@@ -937,7 +809,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       signatureData,
     };
 
-    if (useFirebase) {
+    if (useFirebase === true) {
       try {
         // Use API route for server-side signing (works for both employees and managers)
         const response = await fetch('/api/sign-policy', {
@@ -1032,9 +904,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       details: warningData.incidentDetails || "",
     };
 
-    if (useFirebase) {
+    if (useFirebase === true) {
       try {
-        await createWarning({
+        // Build the warning object for Firestore, excluding undefined fields
+        const firestoreWarning: any = {
           employeeId: newWarning.employeeId,
           employeeName: newWarning.employeeName,
           date: newWarning.date,
@@ -1044,8 +917,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           severity: newWarning.severity,
           issuedBy: newWarning.issuedBy,
           managerSignature: newWarning.managerSignature,
-          photos: newWarning.photos,
-        });
+        };
+
+        // Only add optional fields if they exist and are not undefined
+        if (newWarning.photos && newWarning.photos.length > 0) {
+          firestoreWarning.photos = newWarning.photos;
+        }
+        if (newWarning.damageDate) {
+          firestoreWarning.damageDate = newWarning.damageDate;
+        }
+        if (newWarning.damageCost) {
+          firestoreWarning.damageCost = newWarning.damageCost;
+        }
+        if (newWarning.additionalNotes) {
+          firestoreWarning.additionalNotes = newWarning.additionalNotes;
+        }
+        if (newWarning.employeeSignature) {
+          firestoreWarning.employeeSignature = newWarning.employeeSignature;
+        }
+
+        await createWarning(firestoreWarning);
         const allWarnings = await getAllWarnings();
         setWarnings(allWarnings as Warning[]);
       } catch (error: any) {
@@ -1071,7 +962,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addPolicy = async (policyData: Omit<Policy, "id">) => {
-    if (useFirebase) {
+    if (useFirebase === true) {
       try {
         await createPolicy(policyData);
         const allPolicies = await getAllPolicies();
@@ -1090,7 +981,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Disable/Enable User (Manager-only)
   const disableUser = async (userId: string, disabled: boolean) => {
-    if (useFirebase) {
+    if (useFirebase === true) {
       try {
         const response = await fetch('/api/admin/disable-user', {
           method: 'POST',
@@ -1126,7 +1017,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Delete User (Manager-only)
   const deleteUser = async (userId: string) => {
-    if (useFirebase) {
+    if (useFirebase === true) {
       try {
         // Note: Deleting from Firebase Auth requires Admin SDK or the user's own ID token
         // For now, we can only delete from Firestore
@@ -1156,7 +1047,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Refresh all data from Firebase (for use after CRUD operations)
   const refreshData = async () => {
-    if (!useFirebase || !firebaseUser) return;
+    if (useFirebase !== true || !firebaseUser) return;
 
     try {
       // Reload all data from Firebase
@@ -1205,7 +1096,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         selectedEmployeeId,
         switchRole,
         loginAs,
-        loginEmployee,
         addEmployee,
         signPolicy,
         issueWarning,

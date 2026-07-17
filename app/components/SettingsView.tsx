@@ -265,34 +265,8 @@ export const SettingsView: React.FC = () => {
             </div>
           )}
 
-          <h4 className="text-xs font-black uppercase text-zinc-500 tracking-wider mb-1 mt-4">Company Info</h4>
+          <h4 className="text-xs font-black uppercase text-zinc-500 tracking-wider mb-1 mt-4">Session</h4>
           
-          <div className="flex items-center justify-between bg-white border border-zinc-150 rounded-2xl p-4 cursor-pointer hover:bg-zinc-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="bg-zinc-100 p-2.5 rounded-xl text-zinc-700">
-                <Shield size={16} />
-              </div>
-              <div>
-                <span className="block text-xs font-extrabold text-zinc-800">Privacy & Security</span>
-                <span className="block text-[10px] text-zinc-400 font-semibold mt-0.5">Manage data retention & logs</span>
-              </div>
-            </div>
-            <ChevronRight size={16} className="text-zinc-300" />
-          </div>
-
-          <div className="flex items-center justify-between bg-white border border-zinc-150 rounded-2xl p-4 cursor-pointer hover:bg-zinc-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="bg-zinc-100 p-2.5 rounded-xl text-zinc-700">
-                <HelpCircle size={16} />
-              </div>
-              <div>
-                <span className="block text-xs font-extrabold text-zinc-800">Support & Feedback</span>
-                <span className="block text-[10px] text-zinc-400 font-semibold mt-0.5">Report bugs or submit suggestions</span>
-              </div>
-            </div>
-            <ChevronRight size={16} className="text-zinc-300" />
-          </div>
-
           <div 
             onClick={logout}
             className="flex items-center justify-between bg-white border border-red-105 hover:bg-red-50/50 rounded-2xl p-4 cursor-pointer transition-colors"

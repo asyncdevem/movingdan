@@ -3,14 +3,16 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, ArrowRight, Loader2, AlertCircle, Eye, EyeOff, ArrowLeft, Shield } from "lucide-react";
-import { useApp } from "../context";
 import { signInWithEmail } from "@/lib/firebase";
+import { createManagerSession } from "@/app/actions/auth";
 
 export default function ManagerLoginPage() {
   const router = useRouter();
-  const { currentUser, isLoading: contextLoading } = useApp();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/manager';
+  
   const [isMounted, setIsMounted] = useState(false);
 
   // Email/Password fields
@@ -28,13 +30,6 @@ export default function ManagerLoginPage() {
     const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
     setFirebaseConfigured(!!apiKey && apiKey !== "your-api-key-here");
   }, []);
-
-  // Redirect if already logged in
-  useEffect(() => {
-    if (!contextLoading && currentUser && currentUser.role === "manager") {
-      router.replace("/manager");
-    }
-  }, [currentUser, contextLoading, router]);
 
   if (!isMounted) {
     return null;
@@ -57,8 +52,27 @@ export default function ManagerLoginPage() {
     setError("");
 
     try {
-      await signInWithEmail(email, password);
-      // Let the useEffect handle the redirect after context updates
+      // Authenticate with Firebase on client side
+      const userCredential = await signInWithEmail(email, password);
+      const user = userCredential.user;
+
+      // Create server-side session
+      const result = await createManagerSession(
+        user.uid,
+        user.email || email,
+        user.displayName || email.split('@')[0]
+      );
+      
+      if (result.success) {
+        // Wait a moment for cookie to be set
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Redirect to callback URL or manager dashboard
+        window.location.href = callbackUrl;
+      } else {
+        setError(result.error || "Failed to create session");
+        setIsLoading(false);
+      }
     } catch (err: any) {
       let errorMessage = "Authentication failed";
       
