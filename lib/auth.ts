@@ -1,8 +1,6 @@
-import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
 const secretKey = process.env.SESSION_SECRET || 'your-secret-key-change-in-production';
-const key = new TextEncoder().encode(secretKey);
 
 export type SessionData = {
   userId: string;
@@ -12,8 +10,17 @@ export type SessionData = {
   name?: string;
 };
 
+// Dynamically import jose to avoid ESM issues
+async function getJose() {
+  const { SignJWT, jwtVerify } = await import('jose');
+  return { SignJWT, jwtVerify };
+}
+
 // Encrypt session data into JWT
 export async function encrypt(payload: SessionData): Promise<string> {
+  const { SignJWT } = await getJose();
+  const key = new TextEncoder().encode(secretKey);
+  
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -24,6 +31,9 @@ export async function encrypt(payload: SessionData): Promise<string> {
 // Decrypt JWT to get session data
 export async function decrypt(token: string): Promise<SessionData | null> {
   try {
+    const { jwtVerify } = await getJose();
+    const key = new TextEncoder().encode(secretKey);
+    
     const { payload } = await jwtVerify(token, key, {
       algorithms: ['HS256'],
     });
