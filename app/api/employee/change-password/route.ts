@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,26 +18,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!adminDb) {
-      console.error('Firebase Admin not initialized');
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+    if (!projectId) {
+      console.error('Firebase config missing');
       return NextResponse.json(
         { error: 'Server configuration error' },
         { status: 500 }
       );
     }
 
-    // First, verify current password by fetching the employee
-    const employeeDoc = await adminDb.collection('users').doc(employeeId).get();
+    // First, verify current password by fetching the employee using REST API
+    const getUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${employeeId}`;
+    
+    const getResponse = await fetch(getUrl);
 
-    if (!employeeDoc.exists) {
+    if (!getResponse.ok) {
       return NextResponse.json(
         { error: 'Employee not found' },
         { status: 404 }
       );
     }
 
-    const employeeData = employeeDoc.data();
-    const storedPassword = employeeData?.password;
+    const employeeDoc = await getResponse.json();
+    const storedPassword = employeeDoc.fields?.password?.stringValue;
 
     if (storedPassword !== currentPassword) {
       return NextResponse.json(
@@ -47,10 +50,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update password in Firestore using Admin SDK
-    await adminDb.collection('users').doc(employeeId).update({
-      password: newPassword
+    // Update password in Firestore using REST API
+    const updateUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${employeeId}?updateMask.fieldPaths=password`;
+    
+    const updateResponse = await fetch(updateUrl, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        fields: {
+          password: { stringValue: newPassword }
+        }
+      })
     });
+
+    if (!updateResponse.ok) {
+      return NextResponse.json(
+        { error: 'Failed to update password' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,38 +11,95 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if signature already exists
-    const existingSignatures = await adminDb
-      .collection('signatures')
-      .where('policyId', '==', policyId)
-      .where('employeeId', '==', employeeId)
-      .get();
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-    if (!existingSignatures.empty) {
+    if (!projectId) {
       return NextResponse.json(
-        { error: 'Policy already signed' },
-        { status: 400 }
+        { error: 'Server configuration error' },
+        { status: 500 }
       );
     }
 
-    // Create signature
-    const signatureRef = await adminDb.collection('signatures').add({
-      policyId,
-      employeeId,
-      signatureData,
-      signedAt: FieldValue.serverTimestamp(),
+    // Check if signature already exists using REST API query
+    const queryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
+    
+    const queryResponse = await fetch(queryUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: 'signatures' }],
+          where: {
+            compositeFilter: {
+              op: 'AND',
+              filters: [
+                {
+                  fieldFilter: {
+                    field: { fieldPath: 'policyId' },
+                    op: 'EQUAL',
+                    value: { stringValue: policyId }
+                  }
+                },
+                {
+                  fieldFilter: {
+                    field: { fieldPath: 'employeeId' },
+                    op: 'EQUAL',
+                    value: { stringValue: employeeId }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      })
     });
 
-    // Get the created signature with converted timestamp
-    const signatureDoc = await signatureRef.get();
-    const data = signatureDoc.data();
+    if (queryResponse.ok) {
+      const results = await queryResponse.json();
+      if (results && results.length > 0 && results[0].document) {
+        return NextResponse.json(
+          { error: 'Policy already signed' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Create signature using REST API
+    const createUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/signatures`;
     
+    const createResponse = await fetch(createUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        fields: {
+          policyId: { stringValue: policyId },
+          employeeId: { stringValue: employeeId },
+          signatureData: { stringValue: signatureData },
+          signedAt: { timestampValue: new Date().toISOString() }
+        }
+      })
+    });
+
+    if (!createResponse.ok) {
+      return NextResponse.json(
+        { error: 'Failed to create signature' },
+        { status: 500 }
+      );
+    }
+
+    const createdDoc = await createResponse.json();
+    const docId = createdDoc.name.split('/').pop();
+
     const signature = {
-      id: signatureDoc.id,
-      policyId: data?.policyId,
-      employeeId: data?.employeeId,
-      signatureData: data?.signatureData,
-      signedAt: data?.signedAt?.toDate ? data.signedAt.toDate().toISOString() : new Date().toISOString(),
+      id: docId,
+      policyId: createdDoc.fields.policyId.stringValue,
+      employeeId: createdDoc.fields.employeeId.stringValue,
+      signatureData: createdDoc.fields.signatureData.stringValue,
+      signedAt: createdDoc.fields.signedAt.timestampValue,
     };
 
     return NextResponse.json({
