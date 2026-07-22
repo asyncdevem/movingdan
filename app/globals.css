@@ -123,3 +123,14 @@ body {
 .phone-input-form .PhoneInputCountry {
   background-color: white;
 }
+
+/* Safe area padding for iOS devices */
+.safe-area-bottom {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+@media (min-width: 768px) {
+  .safe-area-bottom {
+    padding-bottom: 1rem;
+  }
+}

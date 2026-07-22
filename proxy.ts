@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { decrypt } from '@/lib/auth';
 
 // Define public routes that don't require authentication
-const publicRoutes = ['/', '/employee-login', '/manager-login', '/login', '/signup'];
+const publicRoutes = ['/', '/employee-login', '/manager-login', '/forgot-password', '/login', '/signup'];
 
 // Define role-based route prefixes
 const managerRoutes = ['/manager'];

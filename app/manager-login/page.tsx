@@ -170,9 +170,17 @@ export default function ManagerLoginPage() {
 
               {/* Password */}
               <div>
-                <label className="block text-xs font-black uppercase text-zinc-700 mb-2 tracking-wider">
-                  Password
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-black uppercase text-zinc-700 tracking-wider">
+                    Password
+                  </label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs font-bold text-primary hover:underline"
+                  >
+                    Forgot Password?
+                  </Link>
+                </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
                   <input

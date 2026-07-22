@@ -12,6 +12,7 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
   updatePassword as firebaseUpdatePassword,
+  sendPasswordResetEmail,
   User as FirebaseUser
 } from "firebase/auth";
 import { 
@@ -63,7 +64,7 @@ if (typeof window !== "undefined") {
 }
 
 // Safe exports with type assertions for client-side usage
-export { auth, db, storage, onAuthStateChanged };
+export { auth, db, storage, onAuthStateChanged, sendPasswordResetEmail };
 export type { FirebaseUser };
 
 // ==========================================
