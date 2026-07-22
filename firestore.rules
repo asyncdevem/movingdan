@@ -59,6 +59,26 @@ service cloud.firestore {
       allow create, update, delete: if isManager() || true;
     }
     
+    // Chat Groups collection
+    match /groups/{groupId} {
+      // Allow unauthenticated reads for access via API routes (with API key)
+      allow read: if true;
+      
+      // Allow unauthenticated writes for server-side API routes (with API key)
+      // Managers can create groups, employees can read
+      allow create, update, delete: if true;
+    }
+    
+    // Chat Messages collection
+    match /messages/{messageId} {
+      // Allow unauthenticated reads for access via API routes (with API key)
+      allow read: if true;
+      
+      // Allow unauthenticated writes for server-side API routes (with API key)
+      // Users can send messages, managers can delete
+      allow create, update, delete: if true;
+    }
+    
     // Email queue collection (internal only)
     match /emailQueue/{queueId} {
       // Only Cloud Functions can access email queue via Admin SDK

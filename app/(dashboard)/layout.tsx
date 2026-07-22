@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   AlertTriangle,
   Menu,
-  X
+  X,
+  MessageSquare
 } from "lucide-react";
 
 export default function DashboardLayout({
@@ -23,15 +24,19 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { currentUser, logout } = useApp();
+  const { currentUser, logout, unreadCounts } = useApp();
   const pathname = usePathname();
   const isManager = currentUser?.role === "manager";
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Calculate total unread messages
+  const totalUnread = Object.values(unreadCounts).reduce((sum, count) => sum + count, 0);
 
   const managerNavItems = [
     { href: "/manager", label: "Home", icon: HomeIcon },
     { href: "/manager/employees", label: "Directory", icon: UsersIcon },
     { href: "/manager/warnings", label: "Warnings", icon: AlertTriangle },
+    { href: "/manager/chat", label: "Chat", icon: MessageSquare, badge: totalUnread },
     { href: "/manager/reports", label: "Reports", icon: ReportsIcon },
     { href: "/settings", label: "Settings", icon: SettingsIcon },
   ];
@@ -40,6 +45,7 @@ export default function DashboardLayout({
     { href: "/employee", label: "Home", icon: HomeIcon },
     { href: "/employee/policies", label: "Policies", icon: FileText },
     { href: "/employee/compliance", label: "Compliance", icon: ShieldCheck },
+    { href: "/employee/chat", label: "Chat", icon: MessageSquare, badge: totalUnread },
     { href: "/settings", label: "Settings", icon: SettingsIcon },
   ];
 
@@ -82,14 +88,21 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-left transition-all ${
+                className={`flex items-center justify-between gap-3.5 px-3.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-left transition-all ${
                   isActive
                     ? "bg-red-50 text-primary"
                     : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
                 }`}
               >
-                <Icon size={16} strokeWidth={isActive ? 2.5 : 2} />
-                {item.label}
+                <div className="flex items-center gap-3.5">
+                  <Icon size={16} strokeWidth={isActive ? 2.5 : 2} />
+                  {item.label}
+                </div>
+                {item.badge && item.badge > 0 && (
+                  <span className="bg-primary text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                    {item.badge > 99 ? '99+' : item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -171,14 +184,21 @@ export default function DashboardLayout({
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsMobileSidebarOpen(false)}
-                  className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-left transition-all ${
+                  className={`flex items-center justify-between gap-3.5 px-3.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-left transition-all ${
                     isActive
                       ? "bg-red-50 text-primary"
                       : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
                   }`}
                 >
-                  <Icon size={16} strokeWidth={isActive ? 2.5 : 2} />
-                  {item.label}
+                  <div className="flex items-center gap-3.5">
+                    <Icon size={16} strokeWidth={isActive ? 2.5 : 2} />
+                    {item.label}
+                  </div>
+                  {item.badge && item.badge > 0 && (
+                    <span className="bg-primary text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -274,12 +294,17 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center justify-center w-16 h-16 gap-1 transition-all ${
+                className={`relative flex flex-col items-center justify-center w-16 h-16 gap-1 transition-all ${
                   isActive ? "text-primary scale-105 font-black" : "text-zinc-400 hover:text-zinc-650"
                 }`}
               >
                 <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
                 <span className="text-[9px] font-black uppercase tracking-wider">{item.label}</span>
+                {item.badge && item.badge > 0 && (
+                  <span className="absolute top-2 right-4 bg-primary text-white text-[8px] font-black px-1 py-0.5 rounded-full min-w-[14px] text-center">
+                    {item.badge > 9 ? '9+' : item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}

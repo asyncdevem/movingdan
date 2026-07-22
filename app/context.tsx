@@ -70,12 +70,44 @@ export interface Warning {
   status: "Active" | "Resolved";
 }
 
+export interface ChatGroup {
+  id: string;
+  name: string;
+  createdBy: string;
+  createdByName: string;
+  memberIds: string[];
+  members?: User[]; // Populated from memberIds
+  createdAt: string;
+  updatedAt: string;
+  lastMessage?: {
+    text: string;
+    senderId: string;
+    senderName: string;
+    timestamp: string;
+  };
+}
+
+export interface ChatMessage {
+  id: string;
+  groupId: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar: string;
+  text: string;
+  timestamp: string;
+  type: 'text' | 'image' | 'system';
+  readBy: string[];
+}
+
 interface AppContextProps {
   currentUser: User | null;
   users: User[];
   policies: Policy[];
   signatures: Signature[];
   warnings: Warning[];
+  chatGroups: ChatGroup[];
+  messages: Record<string, ChatMessage[]>; // groupId -> messages
+  unreadCounts: Record<string, number>; // groupId -> count
   currentScreen: string; // navigation
   activeTab: string; // bottom navigation
   selectedPolicyId: string | null;
@@ -97,6 +129,12 @@ interface AppContextProps {
   disableUser: (userId: string, disabled: boolean) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   refreshData: () => Promise<void>; // Refresh all data from Firebase
+  createChatGroup: (name: string, memberIds: string[]) => Promise<void>;
+  sendMessage: (groupId: string, text: string) => Promise<void>;
+  loadGroupMessages: (groupId: string) => Promise<void>;
+  markMessagesAsRead: (groupId: string) => Promise<void>;
+  deleteChatGroup: (groupId: string) => Promise<void>;
+  deleteMessage: (messageId: string, groupId: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -419,6 +457,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [warnings, setWarnings] = useState<Warning[]>(INITIAL_WARNINGS);
   const [policies, setPolicies] = useState<Policy[]>([]); // Start with empty array, load from Firebase
 
+  // Chat states
+  const [chatGroups, setChatGroups] = useState<ChatGroup[]>([]);
+  const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({});
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+
   // Navigation states
   const [currentScreen, setCurrentScreen] = useState<string>("home");
   const [activeTab, setActiveTabInternal] = useState<string>("home");
@@ -696,6 +739,264 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       );
     }
   };
+
+  // ==========================================
+  // Chat Functions
+  // ==========================================
+
+  // Create Chat Group
+  const createChatGroup = async (name: string, memberIds: string[]) => {
+    if (!currentUser) {
+      throw new Error("No user logged in");
+    }
+
+    try {
+      const response = await fetch('/api/chat/groups/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+          memberIds: [...memberIds, currentUser.id], // Include creator
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create chat group');
+      }
+
+      const data = await response.json();
+      
+      // Reload groups
+      await loadUserChatGroups();
+      
+      return data.groupId;
+    } catch (error) {
+      console.error("Error creating chat group:", error);
+      throw error;
+    }
+  };
+
+  // Load User's Chat Groups
+  const loadUserChatGroups = async () => {
+    if (!currentUser) return;
+
+    try {
+      const response = await fetch('/api/chat/groups/list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.id })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load chat groups');
+      }
+
+      const data = await response.json();
+      
+      // Populate member details
+      const groupsWithMembers = data.groups.map((group: ChatGroup) => ({
+        ...group,
+        members: users.filter(u => group.memberIds.includes(u.id))
+      }));
+      
+      setChatGroups(groupsWithMembers);
+      
+      // Calculate unread counts
+      calculateUnreadCounts(groupsWithMembers);
+    } catch (error) {
+      console.error("Error loading chat groups:", error);
+    }
+  };
+
+  // Send Message
+  const sendMessage = async (groupId: string, text: string) => {
+    if (!currentUser) {
+      throw new Error("No user logged in");
+    }
+
+    try {
+      const response = await fetch('/api/chat/messages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          groupId,
+          senderId: currentUser.id,
+          senderName: currentUser.name,
+          senderAvatar: currentUser.avatar,
+          text,
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      // Reload messages for this group
+      await loadGroupMessages(groupId);
+      
+      // Reload groups to update lastMessage
+      await loadUserChatGroups();
+    } catch (error) {
+      console.error("Error sending message:", error);
+      throw error;
+    }
+  };
+
+  // Load Group Messages
+  const loadGroupMessages = async (groupId: string) => {
+    try {
+      const response = await fetch(`/api/chat/messages/${groupId}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to load messages');
+      }
+
+      const data = await response.json();
+      
+      setMessages(prev => ({
+        ...prev,
+        [groupId]: data.messages
+      }));
+    } catch (error) {
+      console.error("Error loading messages:", error);
+    }
+  };
+
+  // Mark Messages as Read
+  const markMessagesAsRead = async (groupId: string) => {
+    if (!currentUser) return;
+
+    try {
+      // Update readBy locally immediately for better UX
+      setMessages(prev => {
+        const groupMessages = prev[groupId] || [];
+        const updatedMessages = groupMessages.map(msg => ({
+          ...msg,
+          readBy: msg.readBy.includes(currentUser.id) 
+            ? msg.readBy 
+            : [...msg.readBy, currentUser.id]
+        }));
+        
+        return {
+          ...prev,
+          [groupId]: updatedMessages
+        };
+      });
+
+      // Update unread count
+      setUnreadCounts(prev => ({
+        ...prev,
+        [groupId]: 0
+      }));
+
+      // TODO: Call API to update readBy in Firestore
+      // For now, it's handled client-side
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+    }
+  };
+
+  // Delete Chat Group
+  const deleteChatGroup = async (groupId: string) => {
+    if (!currentUser) {
+      throw new Error("No user logged in");
+    }
+
+    try {
+      const response = await fetch('/api/chat/groups/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupId })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete group');
+      }
+
+      // Remove group from local state
+      setChatGroups(prev => prev.filter(g => g.id !== groupId));
+      
+      // Remove messages for this group
+      setMessages(prev => {
+        const newMessages = { ...prev };
+        delete newMessages[groupId];
+        return newMessages;
+      });
+      
+      // Remove unread count
+      setUnreadCounts(prev => {
+        const newCounts = { ...prev };
+        delete newCounts[groupId];
+        return newCounts;
+      });
+    } catch (error) {
+      console.error("Error deleting group:", error);
+      throw error;
+    }
+  };
+
+  // Delete Message
+  const deleteMessage = async (messageId: string, groupId: string) => {
+    if (!currentUser) {
+      throw new Error("No user logged in");
+    }
+
+    try {
+      const response = await fetch('/api/chat/messages/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId, groupId })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete message');
+      }
+
+      // Remove message from local state
+      setMessages(prev => ({
+        ...prev,
+        [groupId]: (prev[groupId] || []).filter(m => m.id !== messageId)
+      }));
+      
+      // Reload groups to update lastMessage
+      await loadUserChatGroups();
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      throw error;
+    }
+  };
+
+  // Calculate Unread Counts
+  const calculateUnreadCounts = (groups: ChatGroup[]) => {
+    if (!currentUser) return;
+
+    const counts: Record<string, number> = {};
+    
+    groups.forEach(group => {
+      const groupMessages = messages[group.id] || [];
+      const unreadCount = groupMessages.filter(
+        msg => !msg.readBy.includes(currentUser.id) && msg.senderId !== currentUser.id
+      ).length;
+      
+      counts[group.id] = unreadCount;
+    });
+    
+    setUnreadCounts(counts);
+  };
+
+  // Load chat groups when user changes
+  useEffect(() => {
+    if (currentUser && useFirebase === true) {
+      loadUserChatGroups();
+    }
+  }, [currentUser, useFirebase]);
+
+  // Recalculate unread counts when messages change
+  useEffect(() => {
+    calculateUnreadCounts(chatGroups);
+  }, [messages, chatGroups, currentUser]);
 
   // Role switching sandbox helper
   const switchRole = (role: UserRole) => {
@@ -1125,6 +1426,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         policies,
         signatures,
         warnings,
+        chatGroups,
+        messages,
+        unreadCounts,
         currentScreen,
         activeTab,
         selectedPolicyId,
@@ -1145,6 +1449,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         disableUser,
         deleteUser,
         refreshData,
+        createChatGroup,
+        sendMessage,
+        loadGroupMessages,
+        markMessagesAsRead,
+        deleteChatGroup,
+        deleteMessage,
         isLoading,
         addPolicy,
       }}

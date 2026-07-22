@@ -486,3 +486,186 @@ export const updateWarning = async (warningId: string, data: any) => {
     updatedAt: serverTimestamp(),
   });
 };
+
+// ==========================================
+// Chat Groups Operations
+// ==========================================
+
+export const createChatGroup = async (group: {
+  name: string;
+  createdBy: string;
+  createdByName: string;
+  memberIds: string[];
+}) => {
+  if (!db) throw new Error("Firebase not initialized");
+  const docRef = await addDoc(collection(db, "groups"), {
+    ...group,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    lastMessage: null,
+  });
+  
+  // Create system message
+  await addDoc(collection(db, "messages"), {
+    groupId: docRef.id,
+    senderId: "system",
+    senderName: "System",
+    senderAvatar: "SYS",
+    text: `${group.createdByName} created this group`,
+    timestamp: serverTimestamp(),
+    type: "system",
+    readBy: [],
+  });
+  
+  return docRef.id;
+};
+
+export const getUserChatGroups = async (userId: string) => {
+  if (!db) throw new Error("Firebase not initialized");
+  const q = query(
+    collection(db, "groups"),
+    where("memberIds", "array-contains", userId)
+  );
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      name: data.name,
+      createdBy: data.createdBy,
+      createdByName: data.createdByName,
+      memberIds: data.memberIds,
+      createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+      updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : new Date().toISOString(),
+      lastMessage: data.lastMessage,
+    };
+  });
+};
+
+export const getChatGroup = async (groupId: string) => {
+  if (!db) throw new Error("Firebase not initialized");
+  const docSnap = await getDoc(doc(db, "groups", groupId));
+  if (!docSnap.exists()) return null;
+  
+  const data = docSnap.data();
+  return {
+    id: docSnap.id,
+    name: data.name,
+    createdBy: data.createdBy,
+    createdByName: data.createdByName,
+    memberIds: data.memberIds,
+    createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+    updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : new Date().toISOString(),
+    lastMessage: data.lastMessage,
+  };
+};
+
+export const updateChatGroup = async (groupId: string, data: any) => {
+  if (!db) throw new Error("Firebase not initialized");
+  await updateDoc(doc(db, "groups", groupId), {
+    ...data,
+    updatedAt: serverTimestamp(),
+  });
+};
+
+export const deleteChatGroup = async (groupId: string) => {
+  if (!db) throw new Error("Firebase not initialized");
+  // Delete all messages in group
+  const messagesQuery = query(
+    collection(db, "messages"),
+    where("groupId", "==", groupId)
+  );
+  const messagesSnapshot = await getDocs(messagesQuery);
+  const deletePromises = messagesSnapshot.docs.map(doc => deleteDoc(doc.ref));
+  await Promise.all(deletePromises);
+  
+  // Delete group
+  await deleteDoc(doc(db, "groups", groupId));
+};
+
+// ==========================================
+// Chat Messages Operations
+// ==========================================
+
+export const sendChatMessage = async (message: {
+  groupId: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar: string;
+  text: string;
+}) => {
+  if (!db) throw new Error("Firebase not initialized");
+  
+  // Add message
+  const docRef = await addDoc(collection(db, "messages"), {
+    ...message,
+    timestamp: serverTimestamp(),
+    type: "text",
+    readBy: [message.senderId], // Sender has read it by default
+  });
+  
+  // Update group's lastMessage
+  await updateDoc(doc(db, "groups", message.groupId), {
+    lastMessage: {
+      text: message.text,
+      senderId: message.senderId,
+      senderName: message.senderName,
+      timestamp: new Date().toISOString(),
+    },
+    updatedAt: serverTimestamp(),
+  });
+  
+  return docRef.id;
+};
+
+export const getGroupMessages = async (groupId: string, limit: number = 50) => {
+  if (!db) throw new Error("Firebase not initialized");
+  const q = query(
+    collection(db, "messages"),
+    where("groupId", "==", groupId)
+  );
+  const querySnapshot = await getDocs(q);
+  
+  const messages = querySnapshot.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      groupId: data.groupId,
+      senderId: data.senderId,
+      senderName: data.senderName,
+      senderAvatar: data.senderAvatar,
+      text: data.text,
+      timestamp: data.timestamp?.toDate ? data.timestamp.toDate().toISOString() : new Date().toISOString(),
+      type: data.type,
+      readBy: data.readBy || [],
+    };
+  });
+  
+  // Sort by timestamp
+  messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  
+  return messages;
+};
+
+export const markMessagesAsRead = async (groupId: string, userId: string) => {
+  if (!db) throw new Error("Firebase not initialized");
+  const q = query(
+    collection(db, "messages"),
+    where("groupId", "==", groupId)
+  );
+  const querySnapshot = await getDocs(q);
+  
+  const updatePromises = querySnapshot.docs.map(async (docSnapshot) => {
+    const data = docSnapshot.data();
+    const readBy = data.readBy || [];
+    
+    // Only update if user hasn't read it yet
+    if (!readBy.includes(userId)) {
+      await updateDoc(docSnapshot.ref, {
+        readBy: [...readBy, userId],
+      });
+    }
+  });
+  
+  await Promise.all(updatePromises);
+};
