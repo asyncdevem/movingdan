@@ -102,9 +102,6 @@ export default function WarningDetailPage({ params }: { params: Promise<{ id: st
           </button>
           <div>
             <h2 className="text-base font-extrabold text-zinc-900">Warning Details</h2>
-            <p className="text-[10px] text-zinc-500 font-semibold mt-0.5">
-              ID: {warning.id}
-            </p>
           </div>
         </div>
         

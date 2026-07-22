@@ -200,15 +200,6 @@ export const WarningForm: React.FC = () => {
     }
   };
 
-  const loadDemoPhotos = () => {
-    setPhotos([
-      "https://images.unsplash.com/photo-1504222490345-c075b6008014?auto=format&fit=crop&w=400&q=80",
-      "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=400&q=80",
-      "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=400&q=80",
-      "https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=400&q=80"
-    ]);
-  };
-
   const removePhoto = (index: number) => {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
@@ -759,14 +750,6 @@ export const WarningForm: React.FC = () => {
                     className="hidden" 
                   />
                 </label>
-
-                <button
-                  type="button"
-                  onClick={loadDemoPhotos}
-                  className="w-full flex items-center justify-center gap-1.5 py-2.5 border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
-                >
-                  Load Demo Photos (Mockup)
-                </button>
               </div>
 
               {/* Next Button */}
@@ -926,12 +909,6 @@ export const WarningForm: React.FC = () => {
                 <p className="text-xs font-bold text-zinc-800 leading-normal">
                   Written warning has been saved successfully.
                 </p>
-                <div className="bg-zinc-50 border border-zinc-155 rounded-xl py-2 px-4 inline-block mx-auto mt-2">
-                  <span className="block text-[8px] font-black uppercase text-zinc-450 tracking-wider">Warning ID</span>
-                  <span className="text-xs font-black text-zinc-800 font-mono tracking-wider">
-                    {generatedWarningId}
-                  </span>
-                </div>
               </div>
 
               {/* Actions */}

@@ -122,9 +122,6 @@ export default function ManagerWarningsPage() {
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-2">
                       <h5 className="text-sm font-black text-zinc-900">{warning.employeeName}</h5>
-                      <span className="text-[9px] font-black text-zinc-800 bg-zinc-100 px-2 py-0.5 rounded-lg border border-zinc-150 font-mono">
-                        {warning.id}
-                      </span>
                     </div>
                     <span className={`text-[8px] font-black uppercase px-2.5 py-1 rounded-full ${
                       warning.severity === "Final Warning" 
