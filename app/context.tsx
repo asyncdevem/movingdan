@@ -135,6 +135,7 @@ interface AppContextProps {
   markMessagesAsRead: (groupId: string) => Promise<void>;
   deleteChatGroup: (groupId: string) => Promise<void>;
   deleteMessage: (messageId: string, groupId: string) => Promise<void>;
+  addMembersToGroup: (groupId: string, memberIds: string[]) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -968,6 +969,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Add Members to Group
+  const addMembersToGroup = async (groupId: string, memberIds: string[]) => {
+    if (!currentUser) {
+      throw new Error("No user logged in");
+    }
+
+    try {
+      const response = await fetch('/api/chat/groups/add-members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupId, memberIds })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add members to group');
+      }
+
+      // Reload groups to update member list
+      await loadUserChatGroups();
+    } catch (error) {
+      console.error("Error adding members to group:", error);
+      throw error;
+    }
+  };
+
   // Calculate Unread Counts
   const calculateUnreadCounts = (groups: ChatGroup[]) => {
     if (!currentUser) return;
@@ -1455,6 +1481,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markMessagesAsRead,
         deleteChatGroup,
         deleteMessage,
+        addMembersToGroup,
         isLoading,
         addPolicy,
       }}

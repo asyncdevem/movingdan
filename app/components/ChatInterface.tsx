@@ -2,15 +2,16 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useApp, ChatGroup, ChatMessage } from "@/app/context";
-import { Send, Users, Trash2 } from "lucide-react";
+import { Send, Users, Trash2, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface ChatInterfaceProps {
   groupId: string;
   group: ChatGroup;
+  onAddMembers?: () => void;
 }
 
-export const ChatInterface: React.FC<ChatInterfaceProps> = ({ groupId, group }) => {
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({ groupId, group, onAddMembers }) => {
   const { currentUser, messages, sendMessage, loadGroupMessages, markMessagesAsRead, deleteMessage, deleteChatGroup } = useApp();
   const router = useRouter();
   const [messageText, setMessageText] = useState("");
@@ -116,6 +117,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ groupId, group }) 
           >
             <Users size={18} className="text-zinc-600 md:w-5 md:h-5" />
           </button>
+          {isManager && onAddMembers && (
+            <button
+              onClick={onAddMembers}
+              className="hidden md:flex p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
+              title="Add members"
+            >
+              <UserPlus size={20} />
+            </button>
+          )}
           {isManager && (
             <button
               onClick={handleDeleteGroup}
