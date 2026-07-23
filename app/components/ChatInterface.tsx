@@ -12,7 +12,7 @@ interface ChatInterfaceProps {
 }
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({ groupId, group, onAddMembers }) => {
-  const { currentUser, messages, sendMessage, loadGroupMessages, markMessagesAsRead, deleteMessage, deleteChatGroup } = useApp();
+  const { currentUser, messages, sendMessage, loadGroupMessages, markMessagesAsRead, deleteMessage, deleteChatGroup, users } = useApp();
   const router = useRouter();
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -98,6 +98,23 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ groupId, group, on
   };
 
   const isManager = currentUser?.role === 'manager';
+
+  // Get members from users array if not already populated in group
+  const groupMembers = group.members && group.members.length > 0 
+    ? group.members 
+    : users.filter(u => group.memberIds.includes(u.id));
+
+  // Debug: Log group data
+  useEffect(() => {
+    console.log('Group data:', {
+      groupId: group.id,
+      name: group.name,
+      memberIds: group.memberIds,
+      membersArray: group.members,
+      membersCount: group.members?.length || 0,
+      groupMembersCalculated: groupMembers.length
+    });
+  }, [group, groupMembers]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -275,33 +292,44 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ groupId, group, on
       {showMembers && (
         <>
           <div 
-            className="fixed inset-0 bg-black/50 z-40"
+            className="fixed inset-0 bg-black/50 z-[60]"
             onClick={() => setShowMembers(false)}
           />
-          <div className="fixed top-0 right-0 bottom-0 w-[85%] max-w-sm md:w-80 bg-white border-l border-zinc-200 z-50 p-4 md:p-6 overflow-y-auto">
+          <div className="fixed top-0 right-0 bottom-0 w-[85%] max-w-sm md:w-80 bg-white border-l border-zinc-200 z-[70] p-4 md:p-6 overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between mb-4 md:mb-6">
               <h3 className="text-xs md:text-sm font-black text-zinc-900 uppercase tracking-wider">
-                Group Members
+                Group Members ({groupMembers.length})
               </h3>
               <button
                 onClick={() => setShowMembers(false)}
-                className="text-zinc-400 hover:text-zinc-700 text-lg md:text-xl"
+                className="text-zinc-400 hover:text-zinc-700 text-lg md:text-xl p-2 -m-2"
               >
                 ✕
               </button>
             </div>
             <div className="space-y-2 md:space-y-3">
-              {group.members?.map((member) => (
-                <div key={member.id} className="flex items-center gap-2.5 md:gap-3 p-2.5 md:p-3 bg-zinc-50 rounded-xl">
-                  <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-zinc-900 text-white flex items-center justify-center font-bold text-xs md:text-sm shrink-0">
-                    {member.avatar}
+              {groupMembers.length > 0 ? (
+                groupMembers.map((member) => (
+                  <div key={member.id} className="flex items-center gap-2.5 md:gap-3 p-2.5 md:p-3 bg-zinc-50 rounded-xl">
+                    <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-zinc-900 text-white flex items-center justify-center font-bold text-xs md:text-sm shrink-0">
+                      {member.avatar}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs md:text-sm font-bold text-zinc-900 truncate">{member.name}</p>
+                      <p className="text-[10px] md:text-xs text-zinc-500 font-semibold capitalize">{member.role}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs md:text-sm font-bold text-zinc-900 truncate">{member.name}</p>
-                    <p className="text-[10px] md:text-xs text-zinc-500 font-semibold capitalize">{member.role}</p>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-xs md:text-sm text-zinc-400 font-semibold">
+                    No members found
+                  </p>
+                  <p className="text-[10px] md:text-xs text-zinc-400 mt-2">
+                    Member IDs: {group.memberIds.join(', ')}
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </>
