@@ -4,7 +4,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useApp } from "../context";
-import { FileText, AlertTriangle, UserPlus, BarChart3, ShieldCheck, ChevronRight } from "lucide-react";
+import { FileText, AlertTriangle, UserPlus, BarChart3, ShieldCheck, ChevronRight, Calculator } from "lucide-react";
 
 export const HomeDashboard: React.FC = () => {
   const { currentUser, policies, signatures, warnings, users } = useApp();
@@ -172,6 +172,27 @@ export const HomeDashboard: React.FC = () => {
 
       {/* Primary Action Buttons (Vertical Stack) */}
       <div className="flex flex-col gap-4">
+        {/* Moving Calculator (Manager Only - Blue/Teal Button) */}
+        {isManager && (
+          <a
+            href={process.env.NEXT_PUBLIC_CALCULATOR_URL || "http://localhost:3001/admin"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-between bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 active:scale-[0.99] text-white py-4.5 px-5 rounded-2xl shadow-md transition-all duration-200 text-left font-bold cursor-pointer"
+          >
+            <div className="flex items-center gap-4">
+              <div className="bg-white/15 p-2.5 rounded-xl">
+                <Calculator size={22} className="text-white" />
+              </div>
+              <div>
+                <span className="block text-base tracking-tight font-extrabold">Moving Calculator</span>
+                <span className="block text-xs font-medium text-white/80 mt-0.5">Create quotes & estimate moving costs</span>
+              </div>
+            </div>
+            <ChevronRight size={20} className="text-white/70" />
+          </a>
+        )}
+
         {/* Written Policies (Red Button) */}
         <Link
           href={isManager ? "/manager/policies" : "/employee/policies"}

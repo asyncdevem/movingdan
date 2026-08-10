@@ -67,11 +67,16 @@ export async function createSession(data: SessionData): Promise<string> {
   const session = await encrypt(data);
   
   const cookieStore = await cookies();
+  
+  // For cross-domain support between movingdan.vercel.app and movingcalculator.vercel.app
+  // We need sameSite: 'none' and secure: true
+  const isProduction = process.env.NODE_ENV === 'production';
+  
   cookieStore.set('session', session, {
     expires,
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: true, // Always true for cross-domain (requires HTTPS)
+    sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-domain in production
     path: '/',
   });
 
