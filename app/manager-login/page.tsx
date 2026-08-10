@@ -67,8 +67,22 @@ export default function ManagerLoginPage() {
         // Wait a moment for cookie to be set
         await new Promise(resolve => setTimeout(resolve, 100));
         
-        // Redirect to callback URL or manager dashboard
-        window.location.href = callbackUrl;
+        // Check if callback URL is for a different domain (cross-domain redirect)
+        const isCrossDomain = callbackUrl.startsWith('http') && 
+                             !callbackUrl.includes(window.location.host);
+        
+        if (isCrossDomain) {
+          // For cross-domain redirect, pass session data via URL params
+          // The target app will create its own session cookie
+          const url = new URL(callbackUrl);
+          url.searchParams.set('userId', user.uid);
+          url.searchParams.set('email', user.email || email);
+          url.searchParams.set('name', user.displayName || email.split('@')[0]);
+          window.location.href = url.toString();
+        } else {
+          // Same domain redirect - session cookie will be available
+          window.location.href = callbackUrl;
+        }
       } else {
         setError(result.error || "Failed to create session");
         setIsLoading(false);
