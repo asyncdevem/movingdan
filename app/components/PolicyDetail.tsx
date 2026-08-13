@@ -3,8 +3,9 @@
 import React, { useRef, useState, useEffect } from "react";
 import { useApp } from "../context";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, CheckCircle, RotateCcw, PenTool, Calendar, ShieldCheck, Edit, Trash2, X, Heading, Bold, List, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, CheckCircle, RotateCcw, PenTool, Calendar, ShieldCheck, Edit, Trash2, X, Heading, Bold, List, Eye, EyeOff, Users } from "lucide-react";
 import { PolicyIcon } from "./PoliciesList";
+import { PolicySignatures } from "./PolicySignatures";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Toast, ToastType, ConfirmModal } from "./Toast";
@@ -32,6 +33,7 @@ export const PolicyDetail: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditPreview, setShowEditPreview] = useState(false);
+  const [showSignatures, setShowSignatures] = useState(false);
   const editContentRef = React.useRef<HTMLTextAreaElement>(null);
 
   // Toast state
@@ -296,6 +298,17 @@ export const PolicyDetail: React.FC = () => {
           {isManager && (
             <>
               <button
+                onClick={() => setShowSignatures(!showSignatures)}
+                className={`p-2 rounded-lg transition-colors ${
+                  showSignatures 
+                    ? "bg-primary text-white" 
+                    : "hover:bg-purple-50 text-purple-600"
+                }`}
+                title="View Signatures"
+              >
+                <Users size={16} />
+              </button>
+              <button
                 onClick={handleEditPolicy}
                 className="p-2 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors"
                 title="Edit Policy"
@@ -316,7 +329,31 @@ export const PolicyDetail: React.FC = () => {
 
       {/* Scrollable Policy Content Area */}
       <div className="flex-1 overflow-y-auto px-5 py-5 bg-zinc-50">
-        <div className="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pb-10">
+        <div className="max-w-6xl mx-auto w-full pb-10">
+          
+          {/* Manager View: Signature Tracking (Toggle) */}
+          {isManager && showSignatures && (
+            <div className="mb-6">
+              <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-2xl p-5 mb-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2.5 rounded-xl bg-purple-100 text-purple-600">
+                    <Users size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-zinc-900 uppercase tracking-tight">
+                      Employee Signature Tracking
+                    </h3>
+                    <p className="text-[10px] font-semibold text-zinc-600">
+                      View which employees have signed this policy
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <PolicySignatures policyId={policyId} />
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* Left Column: Policy Text */}
           <div className="lg:col-span-7 flex flex-col gap-5">
@@ -448,6 +485,7 @@ export const PolicyDetail: React.FC = () => {
             </div>
           </div>
 
+          </div>
         </div>
       </div>
 

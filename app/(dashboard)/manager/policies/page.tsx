@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useApp } from "@/app/context";
-import { PoliciesList } from "@/app/components/PoliciesList";
+import { PolicyComplianceOverview } from "@/app/components/PolicyComplianceOverview";
 import { redirect } from "next/navigation";
 
 export default function ManagerPoliciesPage() {
@@ -14,5 +14,5 @@ export default function ManagerPoliciesPage() {
     redirect("/");
   }
 
-  return <PoliciesList />;
+  return <PolicyComplianceOverview />;
 }

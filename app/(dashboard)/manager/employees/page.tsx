@@ -5,7 +5,7 @@ import { useApp } from "@/app/context";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { 
-  Search, Mail, UserPlus, AlertTriangle, Edit, X, Send, Loader2
+  Search, Mail, UserPlus, AlertTriangle, Edit, X, Send, Loader2, Eye, EyeOff, Key
 } from "lucide-react";
 import { Toast, ToastType, ConfirmModal } from "@/app/components/Toast";
 
@@ -16,6 +16,7 @@ export default function ManagerEmployeesPage() {
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [editForm, setEditForm] = useState({ name: "", title: "", phone: "", email: "" });
   const [isSaving, setIsSaving] = useState(false);
+  const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   
   // Email modal state
   const [emailingUser, setEmailingUser] = useState<any | null>(null);
@@ -197,6 +198,18 @@ Do you want to remove this user from the directory?`,
     }
   };
 
+  const togglePasswordVisibility = (userId: string) => {
+    setVisiblePasswords(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(userId)) {
+        newSet.delete(userId);
+      } else {
+        newSet.add(userId);
+      }
+      return newSet;
+    });
+  };
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
@@ -216,18 +229,44 @@ Do you want to remove this user from the directory?`,
 
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-6">
-        {/* Search Bar */}
-        <div className="relative shrink-0 max-w-md">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-zinc-400">
-            <Search size={16} />
-          </span>
-          <input
-            type="text"
-            placeholder="Search team members..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-zinc-200 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950/10 rounded-xl py-3 pl-11 pr-4 text-xs font-bold text-zinc-800 placeholder-zinc-400 outline-none transition-all"
-          />
+        {/* Search Bar and Controls */}
+        <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between shrink-0">
+          <div className="relative flex-1 max-w-md">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-zinc-400">
+              <Search size={16} />
+            </span>
+            <input
+              type="text"
+              placeholder="Search team members..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white border border-zinc-200 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950/10 rounded-xl py-3 pl-11 pr-4 text-xs font-bold text-zinc-800 placeholder-zinc-400 outline-none transition-all"
+            />
+          </div>
+
+          {/* Toggle All Passwords Button */}
+          <button
+            onClick={() => {
+              if (visiblePasswords.size > 0) {
+                setVisiblePasswords(new Set());
+              } else {
+                setVisiblePasswords(new Set(filteredUsers.map(u => u.id)));
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 rounded-xl transition-all text-xs font-bold text-zinc-700"
+          >
+            {visiblePasswords.size > 0 ? (
+              <>
+                <EyeOff size={14} />
+                Hide All Passwords
+              </>
+            ) : (
+              <>
+                <Eye size={14} />
+                Show All Passwords
+              </>
+            )}
+          </button>
         </div>
 
         {/* Directory Grid */}
@@ -274,7 +313,31 @@ Do you want to remove this user from the directory?`,
                   </div>
 
                   <div className="mt-6 pt-4 border-t border-zinc-150">
-                    <span className="text-[10px] font-bold text-zinc-400 truncate block mb-3">{user.email}</span>
+                    <span className="text-[10px] font-bold text-zinc-400 truncate block mb-2">{user.email}</span>
+                    
+                    {/* Password Display/Toggle */}
+                    <div className="mb-3 p-2.5 bg-zinc-50 border border-zinc-200 rounded-lg flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <Key size={12} className="text-zinc-400 shrink-0" />
+                        <span className="text-[10px] font-mono font-bold text-zinc-700 truncate">
+                          {visiblePasswords.has(user.id) 
+                            ? (user.password || "No password set") 
+                            : "••••••••"}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => togglePasswordVisibility(user.id)}
+                        className="p-1.5 rounded-md hover:bg-zinc-200 transition-colors shrink-0"
+                        title={visiblePasswords.has(user.id) ? "Hide password" : "Show password"}
+                      >
+                        {visiblePasswords.has(user.id) ? (
+                          <EyeOff size={12} className="text-zinc-600" />
+                        ) : (
+                          <Eye size={12} className="text-zinc-600" />
+                        )}
+                      </button>
+                    </div>
+
                     <div className="flex flex-col gap-2">
                       <button
                         onClick={() => handleEditEmployee(user)}
