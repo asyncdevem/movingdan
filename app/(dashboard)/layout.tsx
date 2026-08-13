@@ -35,6 +35,7 @@ export default function DashboardLayout({
   const managerNavItems = [
     { href: "/manager", label: "Home", icon: HomeIcon },
     { href: "/manager/employees", label: "Directory", icon: UsersIcon },
+    { href: "/manager/policies", label: "Policies", icon: FileText },
     { href: "/manager/warnings", label: "Warnings", icon: AlertTriangle },
     { href: "/manager/chat", label: "Chat", icon: MessageSquare, badge: totalUnread },
     { href: "/manager/reports", label: "Reports", icon: ReportsIcon },

@@ -5,7 +5,7 @@ import { useApp } from "@/app/context";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { 
-  Search, Mail, UserPlus, AlertTriangle, Edit, X, Send, Loader2, Eye, EyeOff, Key
+  Search, Mail, UserPlus, AlertTriangle, Edit, X, Send, Loader2, Eye, EyeOff, Key, CheckCircle, XCircle, FileText
 } from "lucide-react";
 import { Toast, ToastType, ConfirmModal } from "@/app/components/Toast";
 
@@ -17,6 +17,7 @@ export default function ManagerEmployeesPage() {
   const [editForm, setEditForm] = useState({ name: "", title: "", phone: "", email: "" });
   const [isSaving, setIsSaving] = useState(false);
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
+  const [expandedPolicies, setExpandedPolicies] = useState<Set<string>>(new Set());
   
   // Email modal state
   const [emailingUser, setEmailingUser] = useState<any | null>(null);
@@ -43,7 +44,12 @@ export default function ManagerEmployeesPage() {
   }
 
   const directoryUsers = users.filter((u) => u.role === "employee");
+  const adminUsers = users.filter((u) => u.role === "admin");
   const filteredUsers = directoryUsers.filter((u) =>
+    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const filteredAdmins = adminUsers.filter((u) =>
     u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -210,6 +216,18 @@ Do you want to remove this user from the directory?`,
     });
   };
 
+  const togglePolicyExpansion = (userId: string) => {
+    setExpandedPolicies(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(userId)) {
+        newSet.delete(userId);
+      } else {
+        newSet.add(userId);
+      }
+      return newSet;
+    });
+  };
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
@@ -270,11 +288,26 @@ Do you want to remove this user from the directory?`,
         </div>
 
         {/* Directory Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-10">
-          {filteredUsers.length > 0 ? (
-            filteredUsers.map((user) => {
-              const signedCount = signatures.filter((s) => s.employeeId === user.id).length;
+        <div className="flex flex-col gap-6 pb-10">
+          {/* Admins Section */}
+          {(filteredAdmins.length > 0 || adminUsers.length > 0) && (
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-px flex-1 bg-zinc-200"></div>
+                <h3 className="text-xs font-black uppercase tracking-wider text-zinc-500">
+                  Administrators ({filteredAdmins.length})
+                </h3>
+                <div className="h-px flex-1 bg-zinc-200"></div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredAdmins.map((user) => {
+              const userSignatures = signatures.filter((s) => s.employeeId === user.id);
+              const signedPolicyIds = new Set(userSignatures.map(s => s.policyId));
+              const signedCount = userSignatures.length;
               const complianceRate = Math.round((signedCount / policies.length) * 100);
+              
+              const signedPolicies = policies.filter(p => signedPolicyIds.has(p.id));
+              const unsignedPolicies = policies.filter(p => !signedPolicyIds.has(p.id));
 
               return (
                 <div
@@ -309,6 +342,73 @@ Do you want to remove this user from the directory?`,
                           {signedCount}/{policies.length}
                         </span>
                       </div>
+                    </div>
+                    
+                    {/* Policy Details Section */}
+                    <div className="mt-4">
+                      <button
+                        onClick={() => togglePolicyExpansion(user.id)}
+                        className="w-full flex items-center justify-between p-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileText size={12} className="text-blue-600" />
+                          <span className="text-[10px] font-black uppercase tracking-wider text-blue-700">
+                            Policy Details
+                          </span>
+                        </div>
+                        <div className="text-[9px] font-bold text-blue-600">
+                          {expandedPolicies.has(user.id) ? "Hide" : "Show"}
+                        </div>
+                      </button>
+
+                      {/* Expanded Policy List */}
+                      {expandedPolicies.has(user.id) && (
+                        <div className="mt-3 p-3 bg-zinc-50 border border-zinc-200 rounded-lg max-h-64 overflow-y-auto">
+                          {/* Signed Policies */}
+                          {signedPolicies.length > 0 && (
+                            <div className="mb-3">
+                              <h5 className="text-[9px] font-black uppercase tracking-wider text-emerald-700 mb-2 flex items-center gap-1">
+                                <CheckCircle size={10} />
+                                Signed ({signedPolicies.length})
+                              </h5>
+                              <div className="space-y-1.5">
+                                {signedPolicies.map((policy) => (
+                                  <div key={policy.id} className="flex items-start gap-2 text-[10px]">
+                                    <CheckCircle size={10} className="text-emerald-500 shrink-0 mt-0.5" />
+                                    <span className="text-zinc-700 font-semibold leading-tight">{policy.title}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Unsigned Policies */}
+                          {unsignedPolicies.length > 0 && (
+                            <div>
+                              <h5 className="text-[9px] font-black uppercase tracking-wider text-red-700 mb-2 flex items-center gap-1">
+                                <XCircle size={10} />
+                                Not Signed ({unsignedPolicies.length})
+                              </h5>
+                              <div className="space-y-1.5">
+                                {unsignedPolicies.map((policy) => (
+                                  <div key={policy.id} className="flex items-start gap-2 text-[10px]">
+                                    <XCircle size={10} className="text-red-500 shrink-0 mt-0.5" />
+                                    <span className="text-zinc-700 font-semibold leading-tight">{policy.title}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* All Complete Message */}
+                          {signedPolicies.length === policies.length && policies.length > 0 && (
+                            <div className="text-center py-2">
+                              <CheckCircle size={20} className="text-emerald-500 mx-auto mb-1" />
+                              <p className="text-[10px] font-bold text-emerald-700">All Policies Signed!</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -380,13 +480,214 @@ Do you want to remove this user from the directory?`,
                   </div>
                 </div>
               );
-            })
-          ) : (
-            <div className="col-span-full text-center py-16 bg-white rounded-2xl border border-zinc-200">
-              <Search size={36} className="mx-auto text-zinc-300 mb-2" />
-              <p className="text-xs font-semibold text-zinc-400">No team members found.</p>
-            </div>
-          )}
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Employees Section */}
+      {filteredUsers.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-px flex-1 bg-zinc-200"></div>
+            <h3 className="text-xs font-black uppercase tracking-wider text-zinc-500">
+              Employees ({filteredUsers.length})
+            </h3>
+            <div className="h-px flex-1 bg-zinc-200"></div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredUsers.map((user) => {
+              const userSignatures = signatures.filter((s) => s.employeeId === user.id);
+              const signedPolicyIds = new Set(userSignatures.map(s => s.policyId));
+              const signedCount = userSignatures.length;
+              const complianceRate = Math.round((signedCount / policies.length) * 100);
+              
+              const signedPolicies = policies.filter(p => signedPolicyIds.has(p.id));
+              const unsignedPolicies = policies.filter(p => !signedPolicyIds.has(p.id));
+
+              return (
+                <div
+                  key={user.id}
+                  className="bg-white border border-zinc-200 hover:border-zinc-300 rounded-2xl p-5 flex flex-col justify-between shadow-2xs hover:shadow-xs transition-all duration-200"
+                >
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-zinc-100 border border-zinc-200 text-zinc-700 flex items-center justify-center font-bold text-sm shrink-0">
+                        {user.avatar}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-black text-zinc-900 truncate">{user.name}</h4>
+                        <p className="text-[11px] font-bold text-zinc-500 mt-0.5 truncate">{user.title}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 flex flex-col gap-1">
+                      <span className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-wider">Compliance</span>
+                      <div className="flex items-center justify-between gap-2 mt-0.5">
+                        <div className="flex-1 h-2 bg-zinc-100 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full transition-all ${
+                              complianceRate === 100 ? "bg-emerald-500" : complianceRate > 50 ? "bg-zinc-800" : "bg-primary"
+                            }`}
+                            style={{ width: `${complianceRate}%` }}
+                          />
+                        </div>
+                        <span className={`text-[10px] font-black shrink-0 ${
+                          complianceRate === 100 ? "text-emerald-600" : complianceRate > 50 ? "text-zinc-800" : "text-primary"
+                        }`}>
+                          {signedCount}/{policies.length}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Policy Details Section */}
+                    <div className="mt-4">
+                      <button
+                        onClick={() => togglePolicyExpansion(user.id)}
+                        className="w-full flex items-center justify-between p-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileText size={12} className="text-blue-600" />
+                          <span className="text-[10px] font-black uppercase tracking-wider text-blue-700">
+                            Policy Details
+                          </span>
+                        </div>
+                        <div className="text-[9px] font-bold text-blue-600">
+                          {expandedPolicies.has(user.id) ? "Hide" : "Show"}
+                        </div>
+                      </button>
+
+                      {/* Expanded Policy List */}
+                      {expandedPolicies.has(user.id) && (
+                        <div className="mt-3 p-3 bg-zinc-50 border border-zinc-200 rounded-lg max-h-64 overflow-y-auto">
+                          {/* Signed Policies */}
+                          {signedPolicies.length > 0 && (
+                            <div className="mb-3">
+                              <h5 className="text-[9px] font-black uppercase tracking-wider text-emerald-700 mb-2 flex items-center gap-1">
+                                <CheckCircle size={10} />
+                                Signed ({signedPolicies.length})
+                              </h5>
+                              <div className="space-y-1.5">
+                                {signedPolicies.map((policy) => (
+                                  <div key={policy.id} className="flex items-start gap-2 text-[10px]">
+                                    <CheckCircle size={10} className="text-emerald-500 shrink-0 mt-0.5" />
+                                    <span className="text-zinc-700 font-semibold leading-tight">{policy.title}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Unsigned Policies */}
+                          {unsignedPolicies.length > 0 && (
+                            <div>
+                              <h5 className="text-[9px] font-black uppercase tracking-wider text-red-700 mb-2 flex items-center gap-1">
+                                <XCircle size={10} />
+                                Not Signed ({unsignedPolicies.length})
+                              </h5>
+                              <div className="space-y-1.5">
+                                {unsignedPolicies.map((policy) => (
+                                  <div key={policy.id} className="flex items-start gap-2 text-[10px]">
+                                    <XCircle size={10} className="text-red-500 shrink-0 mt-0.5" />
+                                    <span className="text-zinc-700 font-semibold leading-tight">{policy.title}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* All Complete Message */}
+                          {signedPolicies.length === policies.length && policies.length > 0 && (
+                            <div className="text-center py-2">
+                              <CheckCircle size={20} className="text-emerald-500 mx-auto mb-1" />
+                              <p className="text-[10px] font-bold text-emerald-700">All Policies Signed!</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-zinc-150">
+                    <span className="text-[10px] font-bold text-zinc-400 truncate block mb-2">{user.email}</span>
+                    
+                    {/* Password Display/Toggle */}
+                    <div className="mb-3 p-2.5 bg-zinc-50 border border-zinc-200 rounded-lg flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <Key size={12} className="text-zinc-400 shrink-0" />
+                        <span className="text-[10px] font-mono font-bold text-zinc-700 truncate">
+                          {visiblePasswords.has(user.id) 
+                            ? (user.password || "No password set") 
+                            : "••••••••"}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => togglePasswordVisibility(user.id)}
+                        className="p-1.5 rounded-md hover:bg-zinc-200 transition-colors shrink-0"
+                        title={visiblePasswords.has(user.id) ? "Hide password" : "Show password"}
+                      >
+                        {visiblePasswords.has(user.id) ? (
+                          <EyeOff size={12} className="text-zinc-600" />
+                        ) : (
+                          <Eye size={12} className="text-zinc-600" />
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => handleEditEmployee(user)}
+                        className="w-full inline-flex items-center justify-center gap-1.5 text-[10px] font-black uppercase text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 py-2 px-3 rounded-lg transition-colors border border-blue-200 shadow-3xs"
+                      >
+                        <Edit size={12} />
+                        Edit Profile
+                      </button>
+                      <Link
+                        href={`/manager/warnings/new?employeeId=${user.id}`}
+                        className="w-full inline-flex items-center justify-center gap-1.5 text-[10px] font-black uppercase text-primary hover:text-primary-hover bg-red-50 hover:bg-red-100 py-2 px-3 rounded-lg transition-colors border border-red-100 shadow-3xs"
+                      >
+                        <AlertTriangle size={12} />
+                        Issue Warning
+                      </Link>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => handleBlockUser(user.id, (user as any).disabled || false)}
+                          disabled={actioningUserId === user.id}
+                          className="inline-flex items-center justify-center gap-1 text-[9px] font-black uppercase text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 py-1.5 px-2 rounded-lg transition-colors border border-amber-200 disabled:opacity-50"
+                        >
+                          {actioningUserId === user.id ? "..." : (user as any).disabled ? "Unblock" : "Block"}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user.id, user.email)}
+                          disabled={actioningUserId === user.id}
+                          className="inline-flex items-center justify-center gap-1 text-[9px] font-black uppercase text-red-700 hover:text-red-900 bg-red-50 hover:bg-red-100 py-1.5 px-2 rounded-lg transition-colors border border-red-200 disabled:opacity-50"
+                        >
+                          {actioningUserId === user.id ? "..." : "Delete"}
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => handleOpenEmailModal(user)}
+                        className="w-full inline-flex items-center justify-center gap-1.5 text-[10px] font-black uppercase text-zinc-700 hover:text-zinc-950 bg-zinc-105 hover:bg-zinc-200 py-2 px-3 rounded-lg transition-colors border border-zinc-200"
+                      >
+                        <Mail size={12} />
+                        Email
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* No Results */}
+      {filteredUsers.length === 0 && filteredAdmins.length === 0 && (
+        <div className="text-center py-16 bg-white rounded-2xl border border-zinc-200">
+          <Search size={36} className="mx-auto text-zinc-300 mb-2" />
+          <p className="text-xs font-semibold text-zinc-400">No team members found.</p>
+        </div>
+      )}
         </div>
       </div>
 

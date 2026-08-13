@@ -126,7 +126,7 @@ export const createUserProfile = async (userId: string, userData: {
   name: string;
   email: string;
   phone?: string;
-  role: "employee" | "manager";
+  role: "employee" | "manager" | "admin";
   title: string;
   avatar: string;
   password?: string; // For employees who don't use Firebase Auth
