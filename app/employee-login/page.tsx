@@ -174,6 +174,16 @@ export default function EmployeeLoginPage() {
               </button>
             </form>
 
+            {/* Forgot Password Link */}
+            <div className="mt-4 text-center">
+              <Link 
+                href="/employee-forgot-password"
+                className="text-xs font-bold text-zinc-600 hover:text-primary transition-colors"
+              >
+                Forgot your password?
+              </Link>
+            </div>
+
             {/* Info */}
             <div className="mt-6 pt-6 border-t border-zinc-200">
               <p className="text-xs text-zinc-600 font-semibold text-center">

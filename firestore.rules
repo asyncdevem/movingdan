@@ -79,6 +79,16 @@ service cloud.firestore {
       allow create, update, delete: if true;
     }
     
+    // Direct Messages collection
+    match /directMessages/{dmId} {
+      // Allow unauthenticated reads for access via API routes (with API key)
+      allow read: if true;
+      
+      // Allow unauthenticated writes for server-side API routes (with API key)
+      // Users can create and manage DMs
+      allow create, update, delete: if true;
+    }
+    
     // Email queue collection (internal only)
     match /emailQueue/{queueId} {
       // Only Cloud Functions can access email queue via Admin SDK

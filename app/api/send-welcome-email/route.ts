@@ -1,31 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendWelcomeEmail } from '@/lib/email';
+import { sendWelcomeEmail } from '@/lib/gmail';
 
 export async function POST(request: NextRequest) {
   try {
-    const { to, employeeName, phone, password } = await request.json();
+    const { to, employeeName, password } = await request.json();
 
-    if (!to || !employeeName || !phone || !password) {
+    if (!to || !employeeName || !password) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: to, employeeName, password' },
         { status: 400 }
       );
     }
 
-    const result = await sendWelcomeEmail({ to, employeeName, phone, password });
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const loginUrl = `${appUrl}/employee-login`;
 
-    if (!result.success) {
-      return NextResponse.json(
-        { error: 'Failed to send email', details: result.error },
-        { status: 500 }
-      );
-    }
+    await sendWelcomeEmail(to, employeeName, password, loginUrl);
 
-    return NextResponse.json({ success: true, data: result.data });
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Welcome email sent successfully' 
+    });
   } catch (error: any) {
     console.error('Error sending welcome email:', error);
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Failed to send email', message: error.message },
       { status: 500 }
     );
   }
