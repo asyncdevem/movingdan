@@ -79,6 +79,21 @@ export interface ChatGroup {
   members?: User[]; // Populated from memberIds
   createdAt: string;
   updatedAt: string;
+  isDirectMessage?: boolean; // New: indicates if this is a DM
+  lastMessage?: {
+    text: string;
+    senderId: string;
+    senderName: string;
+    timestamp: string;
+  };
+}
+
+export interface DirectMessage {
+  id: string;
+  participants: string[]; // Array of 2 user IDs
+  participantDetails?: User[]; // Populated user details
+  createdAt: string;
+  updatedAt: string;
   lastMessage?: {
     text: string;
     senderId: string;
@@ -106,8 +121,9 @@ interface AppContextProps {
   signatures: Signature[];
   warnings: Warning[];
   chatGroups: ChatGroup[];
-  messages: Record<string, ChatMessage[]>; // groupId -> messages
-  unreadCounts: Record<string, number>; // groupId -> count
+  directMessages: DirectMessage[];
+  messages: Record<string, ChatMessage[]>; // groupId or dmId -> messages
+  unreadCounts: Record<string, number>; // groupId or dmId -> count
   currentScreen: string; // navigation
   activeTab: string; // bottom navigation
   selectedPolicyId: string | null;
@@ -136,6 +152,8 @@ interface AppContextProps {
   deleteChatGroup: (groupId: string) => Promise<void>;
   deleteMessage: (messageId: string, groupId: string) => Promise<void>;
   addMembersToGroup: (groupId: string, memberIds: string[]) => Promise<void>;
+  createDirectMessage: (userId: string) => Promise<string>; // Returns DM id
+  loadDirectMessages: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -460,6 +478,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Chat states
   const [chatGroups, setChatGroups] = useState<ChatGroup[]>([]);
+  const [directMessages, setDirectMessages] = useState<DirectMessage[]>([]);
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({});
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
@@ -995,11 +1014,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Calculate Unread Counts
-  const calculateUnreadCounts = (groups: ChatGroup[]) => {
+  const calculateUnreadCounts = (groups: ChatGroup[], dms: DirectMessage[] = []) => {
     if (!currentUser) return;
 
     const counts: Record<string, number> = {};
     
+    // Calculate unread for groups
     groups.forEach(group => {
       const groupMessages = messages[group.id] || [];
       const unreadCount = groupMessages.filter(
@@ -1009,20 +1029,95 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       counts[group.id] = unreadCount;
     });
     
+    // Calculate unread for DMs
+    dms.forEach(dm => {
+      const dmMessages = messages[dm.id] || [];
+      const unreadCount = dmMessages.filter(
+        msg => !msg.readBy.includes(currentUser.id) && msg.senderId !== currentUser.id
+      ).length;
+      
+      counts[dm.id] = unreadCount;
+    });
+    
     setUnreadCounts(counts);
   };
 
-  // Load chat groups when user changes
+  // Create Direct Message
+  const createDirectMessage = async (otherUserId: string): Promise<string> => {
+    if (!currentUser) {
+      throw new Error("No user logged in");
+    }
+
+    try {
+      const response = await fetch('/api/chat/dm/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId1: currentUser.id,
+          userId2: otherUserId
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create direct message');
+      }
+
+      const data = await response.json();
+      
+      // Reload DMs
+      await loadDirectMessages();
+      
+      return data.dmId;
+    } catch (error) {
+      console.error("Error creating direct message:", error);
+      throw error;
+    }
+  };
+
+  // Load Direct Messages
+  const loadDirectMessages = async () => {
+    if (!currentUser) return;
+
+    try {
+      const response = await fetch('/api/chat/dm/list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.id })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load direct messages');
+      }
+
+      const data = await response.json();
+      
+      // Populate participant details
+      const dmsWithDetails = data.directMessages.map((dm: DirectMessage) => ({
+        ...dm,
+        participantDetails: users.filter(u => dm.participants.includes(u.id))
+      }));
+      
+      setDirectMessages(dmsWithDetails);
+      
+      // Calculate unread counts
+      calculateUnreadCounts(chatGroups, dmsWithDetails);
+    } catch (error) {
+      console.error("Error loading direct messages:", error);
+    }
+  };
+
+  // Load chat groups and DMs when user changes
   useEffect(() => {
     if (currentUser && useFirebase === true) {
       loadUserChatGroups();
+      loadDirectMessages();
     }
   }, [currentUser, useFirebase]);
 
   // Recalculate unread counts when messages change
   useEffect(() => {
-    calculateUnreadCounts(chatGroups);
-  }, [messages, chatGroups, currentUser]);
+    calculateUnreadCounts(chatGroups, directMessages);
+  }, [messages, chatGroups, directMessages, currentUser]);
 
   // Role switching sandbox helper
   const switchRole = (role: UserRole) => {
@@ -1453,6 +1548,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         signatures,
         warnings,
         chatGroups,
+        directMessages,
         messages,
         unreadCounts,
         currentScreen,
@@ -1482,6 +1578,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteChatGroup,
         deleteMessage,
         addMembersToGroup,
+        createDirectMessage,
+        loadDirectMessages,
         isLoading,
         addPolicy,
       }}

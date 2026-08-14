@@ -7,7 +7,7 @@ import { ArrowLeft, MessageSquare, UserPlus } from "lucide-react";
 import { ChatInterface } from "@/app/components/ChatInterface";
 
 export default function ManagerChatGroupPage({ params }: { params: Promise<{ groupId: string }> }) {
-  const { currentUser, chatGroups, users, addMembersToGroup, isLoading } = useApp();
+  const { currentUser, chatGroups, directMessages, users, addMembersToGroup, isLoading } = useApp();
   const router = useRouter();
   const [showAddMembers, setShowAddMembers] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
@@ -21,12 +21,35 @@ export default function ManagerChatGroupPage({ params }: { params: Promise<{ gro
     redirect("/");
   }
 
+  // Check if this is a group chat or DM
   const group = chatGroups.find(g => g.id === groupId);
+  const dm = directMessages.find(d => d.id === groupId);
+  
+  // If it's a DM, create a group-like object for ChatInterface
+  let chatData;
+  if (dm) {
+    const otherUserId = dm.participants.find(id => id !== currentUser.id);
+    const otherUser = users.find(u => u.id === otherUserId);
+    chatData = {
+      id: dm.id,
+      name: otherUser?.name || 'Direct Message',
+      memberIds: dm.participants,
+      members: users.filter(u => dm.participants.includes(u.id)),
+      createdAt: dm.createdAt,
+      updatedAt: dm.updatedAt,
+      createdBy: currentUser.id,
+      createdByName: currentUser.name,
+      isDirectMessage: true,
+      lastMessage: dm.lastMessage
+    };
+  } else {
+    chatData = group;
+  }
 
-  // Get employees not already in the group
-  const availableEmployees = users.filter(
+  // Get employees not already in the group (only for groups, not DMs)
+  const availableEmployees = group ? users.filter(
     u => u.role === 'employee' && !group?.memberIds.includes(u.id)
-  );
+  ) : [];
 
   const handleToggleMember = (memberId: string) => {
     setSelectedMembers(prev => 
@@ -37,7 +60,7 @@ export default function ManagerChatGroupPage({ params }: { params: Promise<{ gro
   };
 
   const handleAddMembers = async () => {
-    if (selectedMembers.length === 0) return;
+    if (selectedMembers.length === 0 || !group) return;
 
     setIsAddingMembers(true);
     try {
@@ -52,14 +75,14 @@ export default function ManagerChatGroupPage({ params }: { params: Promise<{ gro
     }
   };
 
-  if (!group) {
+  if (!chatData) {
     return (
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="text-center">
           <MessageSquare size={48} className="mx-auto text-zinc-300 mb-3" />
-          <h2 className="text-lg font-black text-zinc-900">Group Not Found</h2>
+          <h2 className="text-lg font-black text-zinc-900">Chat Not Found</h2>
           <p className="text-sm text-zinc-500 mt-1">
-            This chat group doesn't exist or you don't have access to it.
+            This conversation doesn't exist or you don't have access to it.
           </p>
           <button
             onClick={() => router.push('/manager/chat')}
@@ -83,12 +106,12 @@ export default function ManagerChatGroupPage({ params }: { params: Promise<{ gro
           <ArrowLeft size={20} className="text-zinc-700" />
         </button>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-black text-zinc-900 truncate">{group.name}</h3>
+          <h3 className="text-sm font-black text-zinc-900 truncate">{chatData.name}</h3>
           <p className="text-xs text-zinc-500 font-semibold">
-            {group.memberIds.length} member{group.memberIds.length !== 1 ? 's' : ''}
+            {dm ? 'Direct Message' : `${chatData.memberIds.length} member${chatData.memberIds.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        {availableEmployees.length > 0 && (
+        {!dm && availableEmployees.length > 0 && (
           <button
             onClick={() => setShowAddMembers(true)}
             className="p-2 rounded-lg hover:bg-primary/10 text-primary transition-colors"
@@ -102,12 +125,12 @@ export default function ManagerChatGroupPage({ params }: { params: Promise<{ gro
       {/* Chat Interface */}
       <ChatInterface 
         groupId={groupId} 
-        group={group}
-        onAddMembers={availableEmployees.length > 0 ? () => setShowAddMembers(true) : undefined}
+        group={chatData}
+        onAddMembers={!dm && availableEmployees.length > 0 ? () => setShowAddMembers(true) : undefined}
       />
 
-      {/* Add Members Modal */}
-      {showAddMembers && (
+      {/* Add Members Modal (only for groups, not DMs) */}
+      {showAddMembers && !dm && (
         <>
           <div 
             className="fixed inset-0 bg-black/50 z-50"
@@ -120,7 +143,7 @@ export default function ManagerChatGroupPage({ params }: { params: Promise<{ gro
                 <div>
                   <h3 className="text-base md:text-lg font-black text-zinc-900">Add Members</h3>
                   <p className="text-xs md:text-sm text-zinc-500 font-semibold mt-1">
-                    Select employees to add to {group.name}
+                    Select employees to add to {chatData.name}
                   </p>
                 </div>
                 <button
