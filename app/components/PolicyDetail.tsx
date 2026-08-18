@@ -328,7 +328,7 @@ export const PolicyDetail: React.FC = () => {
       </div>
 
       {/* Scrollable Policy Content Area */}
-      <div className="flex-1 overflow-y-auto px-5 py-5 bg-zinc-50">
+      <div className="flex-1 overflow-y-auto px-5 py-5 bg-zinc-50 min-h-0">
         <div className="max-w-6xl mx-auto w-full pb-10">
           
           {/* Manager View: Signature Tracking (Toggle) */}

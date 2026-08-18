@@ -52,7 +52,7 @@ export default function ManagerWarningsPage() {
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 md:py-6 flex flex-col gap-4 md:gap-6 pb-6">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 md:py-6 flex flex-col gap-4 md:gap-6 pb-6 min-h-0">
         
         {/* Search & Filter Bar */}
         <div className="flex flex-col sm:flex-row gap-3">

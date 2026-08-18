@@ -82,7 +82,7 @@ export const PoliciesList: React.FC = () => {
       </div>
 
       {/* Main Container (Scrollable) */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-5 py-4 md:py-5 bg-zinc-50">
+      <div className="flex-1 overflow-y-auto px-4 md:px-5 py-4 md:py-5 bg-zinc-50 min-h-0">
         <div className="max-w-4xl mx-auto w-full flex flex-col gap-4 md:gap-5 pb-6">
         
         {/* Instructions Card */}

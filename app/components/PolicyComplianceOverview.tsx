@@ -80,7 +80,7 @@ export const PolicyComplianceOverview: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-zinc-50">
+    <div className="flex-1 flex flex-col overflow-hidden bg-zinc-50 h-full">
       
       {/* Header Section */}
       <div className="bg-white border-b border-zinc-100 px-5 py-6 shrink-0">
@@ -171,7 +171,7 @@ export const PolicyComplianceOverview: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto px-5 py-5">
+      <div className="flex-1 overflow-y-auto px-5 py-5 min-h-0" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="max-w-6xl mx-auto">
           
           {/* Search Bar */}

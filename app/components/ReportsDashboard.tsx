@@ -191,7 +191,7 @@ export const ReportsDashboard: React.FC = () => {
       </div>
 
       {/* Main Dashboard Panel (Scrollable) */}
-      <div className="flex-1 overflow-y-auto px-5 py-5 bg-zinc-50">
+      <div className="flex-1 overflow-y-auto px-5 py-5 bg-zinc-50 min-h-0">
         <div className="max-w-4xl mx-auto w-full flex flex-col gap-6">
         
         {downloadSuccess && (

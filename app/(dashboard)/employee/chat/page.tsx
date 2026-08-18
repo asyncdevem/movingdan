@@ -91,7 +91,7 @@ export default function EmployeeChatPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-3 py-4 md:px-6 md:py-6 safe-area-bottom">
+      <div className="flex-1 overflow-y-auto px-3 py-4 md:px-6 md:py-6 safe-area-bottom min-h-0">
         <div className="max-w-4xl mx-auto">
           
           {/* Groups View */}

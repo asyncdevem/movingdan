@@ -167,7 +167,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ groupId, group, on
       {/* Messages Area */}
       <div 
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto px-3 py-4 md:px-6 md:py-6 bg-zinc-50"
+        className="flex-1 overflow-y-auto px-3 py-4 md:px-6 md:py-6 bg-zinc-50 min-h-0"
       >
         {groupMessages.length > 0 ? (
           <div className="max-w-4xl mx-auto space-y-3 md:space-y-4">

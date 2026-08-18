@@ -149,7 +149,7 @@ export const AddPolicyForm: React.FC = () => {
       </div>
 
       {/* Form Container (Scrollable) */}
-      <div className="flex-1 overflow-y-auto px-5 py-6 bg-zinc-55">
+      <div className="flex-1 overflow-y-auto px-5 py-6 bg-zinc-55 min-h-0">
         <div className="max-w-2xl mx-auto w-full bg-white border border-zinc-200 rounded-2xl p-6 md:p-8 shadow-3xs my-4">
         
         {/* Onboarding Guide Card */}

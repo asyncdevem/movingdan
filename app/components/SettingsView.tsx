@@ -121,7 +121,7 @@ export const SettingsView: React.FC = () => {
       {activeTab === "notifications" ? (
         <EmailNotificationSettings />
       ) : (
-      <div className="flex-1 overflow-y-auto px-5 py-5 bg-zinc-50">
+      <div className="flex-1 overflow-y-auto px-5 py-5 bg-zinc-50 min-h-0">
         <div className="max-w-2xl mx-auto w-full flex flex-col gap-6">
         
         {/* Profile Card */}
