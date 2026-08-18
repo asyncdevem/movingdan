@@ -271,7 +271,7 @@ export default function DashboardLayout({
 
         {/* Page Content - Scrollable with padding for mobile nav and safe area */}
         <div 
-          className="flex-1 flex flex-col overflow-y-auto bg-zinc-50 md:pb-0 md:overflow-hidden pt-14 md:pt-0"
+          className="flex-1 flex flex-col bg-zinc-50 pt-14 md:pt-0 overflow-hidden"
           style={{ 
             paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom))'
           }}
