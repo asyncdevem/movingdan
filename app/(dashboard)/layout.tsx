@@ -273,7 +273,7 @@ export default function DashboardLayout({
         <div 
           className="flex-1 flex flex-col bg-zinc-50 pt-14 md:pt-0 overflow-hidden"
           style={{ 
-            paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom))'
+            paddingBottom: 'calc(3.5rem + env(safe-area-inset-bottom))'
           }}
         >
           {children}
@@ -281,9 +281,9 @@ export default function DashboardLayout({
 
         {/* Mobile Bottom Nav - Fixed position with safe area support */}
         <nav 
-          className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 flex items-center justify-around px-2 shadow-lg z-30"
+          className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 flex items-center justify-around shadow-lg z-30"
           style={{ 
-            height: 'calc(4rem + env(safe-area-inset-bottom))',
+            height: 'calc(3.5rem + env(safe-area-inset-bottom))',
             paddingBottom: 'env(safe-area-inset-bottom)'
           }}
         >
@@ -295,14 +295,16 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`relative flex flex-col items-center justify-center w-16 h-16 gap-1 transition-all ${
-                  isActive ? "text-primary scale-105 font-black" : "text-zinc-400 hover:text-zinc-650"
+                className={`relative flex flex-col items-center justify-center flex-1 h-14 gap-0.5 transition-all ${
+                  isActive ? "text-primary font-black" : "text-zinc-400 active:text-zinc-600"
                 }`}
               >
-                <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-                <span className="text-[9px] font-black uppercase tracking-wider">{item.label}</span>
+                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
+                <span className="text-[8px] font-black uppercase tracking-wider leading-tight truncate max-w-full px-1">
+                  {item.label}
+                </span>
                 {item.badge && item.badge > 0 && (
-                  <span className="absolute top-2 right-4 bg-primary text-white text-[8px] font-black px-1 py-0.5 rounded-full min-w-[14px] text-center">
+                  <span className="absolute top-1 right-1/4 bg-primary text-white text-[8px] font-black px-1 rounded-full min-w-[14px] h-[14px] flex items-center justify-center">
                     {item.badge > 9 ? '9+' : item.badge}
                   </span>
                 )}
