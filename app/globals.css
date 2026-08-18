@@ -26,6 +26,28 @@ body {
   font-family: var(--font-sans);
   margin: 0;
   padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Prevent overscroll bounce on iOS while allowing scrolling */
+html, body {
+  overscroll-behavior-y: none;
+  width: 100%;
+  min-height: 100%;
+}
+
+/* Enable smooth scrolling for all scrollable containers */
+* {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Ensure touch actions work properly on mobile */
+button, a, input, textarea, select {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  touch-action: manipulation;
 }
 
 /* Custom styles for signature canvas and other elements */

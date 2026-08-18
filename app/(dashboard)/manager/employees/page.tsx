@@ -246,7 +246,7 @@ Do you want to remove this user from the directory?`,
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-6">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 md:py-6 flex flex-col gap-4 md:gap-6 pb-6">
         {/* Search Bar and Controls */}
         <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between shrink-0">
           <div className="relative flex-1 max-w-md">

@@ -20,8 +20,8 @@ export const HomeDashboard: React.FC = () => {
   const recentWarnings = warnings.slice(0, 3); // Last 3 warnings
 
   return (
-    <div className="flex-1 flex flex-col overflow-y-auto px-6 py-8">
-      <div className="max-w-2xl mx-auto w-full flex-grow flex flex-col justify-center">
+    <div className="flex-1 flex flex-col overflow-y-auto px-4 md:px-6 py-6 md:py-8">
+      <div className="max-w-2xl mx-auto w-full flex-grow flex flex-col md:justify-center pb-6">
       
       {/* Header & Branding */}
       <div className="flex flex-col items-center justify-center text-center mt-2 mb-6">

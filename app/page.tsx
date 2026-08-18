@@ -7,7 +7,7 @@ import { Shield, Users, ArrowRight, Truck, FileCheck, AlertTriangle } from "luci
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 overflow-y-auto">
       
       {/* Header */}
       <header className="sticky top-0 z-50 w-full py-6 px-6 flex items-center justify-between border-b border-zinc-800/50 backdrop-blur-sm bg-zinc-950/80">
