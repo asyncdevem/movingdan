@@ -80,11 +80,17 @@ export const PolicyComplianceOverview: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-zinc-50 h-full w-full">
-      
-      {/* Header Section */}
-      <div className="bg-white border-b border-zinc-100 px-5 py-6 flex-shrink-0">
-        <div className="max-w-6xl mx-auto">
+    <div 
+      className="flex-1 overflow-auto px-5 py-5 bg-zinc-50"
+      style={{ 
+        WebkitOverflowScrolling: 'touch',
+        minHeight: 0
+      }}
+    >
+      <div className="max-w-6xl mx-auto pb-6">
+        
+        {/* Header Section */}
+        <div className="mb-6">
           <div className="flex items-center justify-between gap-3 mb-5">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-xl bg-primary text-white">
@@ -111,6 +117,8 @@ export const PolicyComplianceOverview: React.FC = () => {
 
           {/* Statistics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Overall Compliance */}
+            <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-4">
             {/* Overall Compliance */}
             <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-4">
               <div className="flex items-center justify-between mb-2">
@@ -168,35 +176,23 @@ export const PolicyComplianceOverview: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div 
-        className="flex-1 overflow-auto px-5 py-5"
-        style={{ 
-          WebkitOverflowScrolling: 'touch',
-          minHeight: 0,
-          flex: '1 1 0'
-        }}
-      >
-        <div className="max-w-6xl mx-auto">
-          
-          {/* Search Bar */}
-          <div className="relative mb-5">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-zinc-400">
-              <Search size={16} />
-            </span>
-            <input
-              type="text"
-              placeholder="Search policies..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl py-3 pl-10 pr-4 text-xs font-medium text-zinc-800 placeholder-zinc-400 outline-none transition-all"
-            />
-          </div>
+        {/* Search Bar */}
+        <div className="relative mb-5">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-zinc-400">
+            <Search size={16} />
+          </span>
+          <input
+            type="text"
+            placeholder="Search policies..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white border border-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl py-3 pl-10 pr-4 text-xs font-medium text-zinc-800 placeholder-zinc-400 outline-none transition-all"
+          />
+        </div>
 
-          {/* Policies List */}
-          <div className="flex flex-col gap-4 pb-6">
+        {/* Policies List */}
+        <div className="flex flex-col gap-4">
             {filteredPolicies.length > 0 ? (
               filteredPolicies.map((item) => (
                 <Link
